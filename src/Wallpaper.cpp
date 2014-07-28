@@ -5,7 +5,7 @@
 #include "Wallpaper.h"
 
 int main(){
-	void * wallpaper_program = dlopen("./mods/bitday.so", RTLD_LAZY);
+	void * wallpaper_program = dlopen("./mods/bitday.so", RTLD_NOW);
 
 	char * error;
 	if((error = dlerror()) != NULL){
@@ -28,8 +28,8 @@ int main(){
 
 	//defaults and stuff
 	Wallpaper wallset = {
-		400,
-		200,
+		640,
+		480,
 		60,
 		&buff
 	};
