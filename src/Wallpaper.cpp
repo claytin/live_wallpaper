@@ -34,7 +34,9 @@ int main(){
 		&buff
 	};
 
-	(*init)(&wallset);
+	if((*init)(&wallset)){
+		return 1;
+	}
 	
 	//now that all the settings have been resolved. itt is time
 	buff.create(wallset.width, wallset.height);
