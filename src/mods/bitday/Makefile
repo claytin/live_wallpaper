@@ -1,11 +1,13 @@
 CC = g++
-CFLAG = -I../../
+CFLAG = -I../../ -std=c++11
 MOD_DIR = ../../../build/mods/
+TARGET=bitday.so
 
-all: bitday.so
+all: $(TARGET)
+	rm $(MOD_DIR)$(TARGET)
 	cp $^ $(MOD_DIR)
 
-bitday.so: bitday.o
+$(TARGET): bitday.o
 	$(CC) -shared -o $@ $^
 
 bitday.o: bitday.cpp
