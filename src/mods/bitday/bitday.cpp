@@ -10,9 +10,15 @@
 #define NUM_GRASS_TEXTURES 2
 #define NUM_CLOUD_TEXTURES 5
 
+//time stuff
+#define HOURS_IN_A_DAY 24
+#define MINUTES_IN_AN_HOUR 60
+#define SECONDS_IN_A_MINUTE 60
+
 Wallpaper * wallp;
-int sunRadius;
+int sunRadius, grassScale;
 long seed, test;
+bool redrawGrass;
 
 //sprite for stuff
 sf::Sprite *grassSprites;
@@ -23,9 +29,11 @@ extern "C" int init(Wallpaper * set){
 	wallp = set;
 
 	//scene settings
+	grassScale = 3;
 	sunRadius = 25;
 	seed = time(NULL);
 	test = seed;
+	redrawGrass = true;
 
 	//create grass
 	sf::Texture * grassTextures = new sf::Texture[NUM_GRASS_TEXTURES];
@@ -42,7 +50,7 @@ extern "C" int init(Wallpaper * set){
 	grassSprites = new sf::Sprite[NUM_GRASS_TEXTURES];
 	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
 		grassSprites[i].setTexture(grassTextures[i]);
-		grassSprites[i].setScale(3, -3);
+		grassSprites[i].setScale(grassScale, -grassScale);
 	}
 
 	//cloud stuff
@@ -64,28 +72,42 @@ extern "C" int init(Wallpaper * set){
 }
 
 extern "C" int redraw(void){
-	const bool redrawGrass = true;
-
 	sf::CircleShape shape(sunRadius);
 
 	long curtime = (test += 60 * 5);
 	//long curtime = time(NULL);
+
 	struct tm *tm_struct = localtime(&curtime);
-	long dayInSec = (tm_struct->tm_hour * 60 * 60)
-				+ (tm_struct->tm_min * 60)
+	long dayInSec =
+		(tm_struct->tm_hour * MINUTES_IN_AN_HOUR * SECONDS_IN_A_MINUTE)
+				+ (tm_struct->tm_min * SECONDS_IN_A_MINUTE)
 				+ tm_struct->tm_sec;
-	const long dayTotalSec = 24 * 60 * 60;
+
+	const long dayTotalSec = HOURS_IN_A_DAY
+		* MINUTES_IN_AN_HOUR
+		* SECONDS_IN_A_MINUTE;
+
 	double DayProgress = ((float)dayInSec / (float)dayTotalSec);
 
+	//print status message
 	std::cout << "time: " <<  tm_struct->tm_hour << ':' << tm_struct->tm_min
 		<< ':' << tm_struct->tm_sec << " prog: " << DayProgress * 100 << '%'
 		<< std::endl;
 
-	float xpos = DayProgress * (wallp->width + (sunRadius * 2)) - (sunRadius * 2);
-	float ypos = sin(DayProgress * 3) * (wallp->height - (sunRadius * 2.5));
+	//x pos will correspond to dayprogress with min being -diameter(radius*2)
+	//and max being the screen width
+	float sunXPos = (DayProgress * (wallp->width + (sunRadius * 2)))
+		- (sunRadius * 2);
 
-	shape.setFillColor(sf::Color(DayProgress * 255, (1 - DayProgress) * 255, (1 - DayProgress) * 100));
-	shape.setPosition(xpos, ypos);
+	//y pos corresponds to the sine of dayprogress to give smooth curve
+	float sunYPos = sin(DayProgress * 3) * (wallp->height - (sunRadius * 2.5));
+
+	shape.setFillColor(sf::Color((tm_struct->tm_yday * 50) % 256,
+				(tm_struct->tm_yday * 100) % 256,
+				(tm_struct->tm_yday * 15) % 256));
+	shape.setPosition(sunXPos, sunYPos);
+
+
 	wallp->renderBuff->draw(shape);
 
 	if(redrawGrass){
@@ -111,6 +133,12 @@ extern "C" int redraw(void){
 			}
 			i++;
 		}
+	}
+
+	if(sunYPos < 200){
+		redrawGrass = true;
+	}else{
+		redrawGrass = false;
 	}
 
 	return 0;
