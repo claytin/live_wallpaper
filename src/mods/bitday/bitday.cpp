@@ -16,7 +16,7 @@
 #define SECONDS_IN_A_MINUTE 60
 
 Wallpaper * wallp;
-long seed, test;
+long seed, test;	//keep same seed
 bool redrawGrass;
 
 //settings
@@ -26,6 +26,9 @@ float sunA, sunB, sunC;
 //sprite for stuff
 sf::Sprite *grassSprites;
 sf::Sprite *cloudSprites;
+
+//pre rendered grass texture
+sf::RenderTexture renderedGrassTexture;
 
 extern "C" int init(Wallpaper * set){
 	set->refresh = 0.01;	//once every second
@@ -80,6 +83,16 @@ extern "C" int init(Wallpaper * set){
 	return 0;
 }
 
+extern "C" int deinit(void){
+	delete [] grassSprites;
+	return 0;
+}
+
+sf::RenderTexture drawGrass(void){
+	sf::RenderTexture grass;
+	return grass;
+}
+
 extern "C" int redraw(void){
 	sf::CircleShape shape(sunRadius);
 
@@ -121,7 +134,7 @@ extern "C" int redraw(void){
 				(tm_struct->tm_yday * 15) % 256));
 	shape.setPosition(sunXPos, sunYPos);
 
-	//wallp->renderBuff->clear();
+	wallp->renderBuff->clear();
 	wallp->renderBuff->draw(shape);
 
 	if(redrawGrass){
@@ -144,16 +157,11 @@ extern "C" int redraw(void){
 		}
 	}
 
-	if(sunYPos < (3 * 16) + grassOffset){
+	if(sunYPos < 500){
 		redrawGrass = true;
 	}else{
 		redrawGrass = false;
 	}
 
-	return 0;
-}
-
-extern "C" int deinit(void){
-	delete [] grassSprites;
 	return 0;
 }
