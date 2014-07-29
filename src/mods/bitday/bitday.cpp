@@ -16,9 +16,12 @@
 #define SECONDS_IN_A_MINUTE 60
 
 Wallpaper * wallp;
-int sunRadius, grassScale;
 long seed, test;
 bool redrawGrass;
+
+//settings
+int sunRadius, grassScale, grassOffset;
+float sunA, sunB, sunC;
 
 //sprite for stuff
 sf::Sprite *grassSprites;
@@ -31,6 +34,12 @@ extern "C" int init(Wallpaper * set){
 	//scene settings
 	grassScale = 3;
 	sunRadius = 25;
+	grassOffset = 100;
+	sunA = 400;
+	sunB = 0;
+	sunC = -(wallp->height - (sunRadius * 3));
+
+	//setup stuff
 	seed = time(NULL);
 	test = seed;
 	redrawGrass = true;
@@ -99,43 +108,43 @@ extern "C" int redraw(void){
 	float sunXPos = (DayProgress * (wallp->width + (sunRadius * 2)))
 		- (sunRadius * 2);
 
-	//y pos corresponds to the sine of dayprogress to give smooth curve
-	float sunYPos = sin(DayProgress * 3) * (wallp->height - (sunRadius * 2.5));
+	//some fancy parabola stuff, thanks shoemaker
+	float x = (sunXPos - (wallp->width / 2)) / (wallp->width / 2);
+
+	float sunYPos = (-((sunA * pow(x, 2)) + (sunB * x) + sunC) + 1);
+
+	//correct for sun radius
+	sunXPos -= sunRadius;
 
 	shape.setFillColor(sf::Color((tm_struct->tm_yday * 50) % 256,
 				(tm_struct->tm_yday * 100) % 256,
 				(tm_struct->tm_yday * 15) % 256));
 	shape.setPosition(sunXPos, sunYPos);
 
-
+	//wallp->renderBuff->clear();
 	wallp->renderBuff->draw(shape);
 
 	if(redrawGrass){
 		srand(seed);
 		int i = 0;
-		sf::RectangleShape grassRect(sf::Vector2f(wallp->width, 50));
+		sf::RectangleShape grassRect(sf::Vector2f(wallp->width, 50
+					+ grassOffset));
 		grassRect.setFillColor(sf::Color(131, 203, 83));
 		wallp->renderBuff->draw(grassRect);
 		while((grassSprites[0].getTexture()->getSize().x
 					* grassSprites[0].getScale().x) * i < wallp->width){
-			if(rand() % 2){
-				grassSprites[0].setPosition(
-						(grassSprites[0].getTexture()->getSize().x
-						* grassSprites[0].getScale().x) * i,
-						grassSprites[0].getTexture()->getSize().x);
-				wallp->renderBuff->draw(grassSprites[0]);
-			}else{
-				grassSprites[1].setPosition(
-						(grassSprites[1].getTexture()->getSize().x
-						* grassSprites[1].getScale().x) * i,
-						grassSprites[1].getTexture()->getSize().x);
-				wallp->renderBuff->draw(grassSprites[1]);
-			}
+			int spriteChoice = rand() % 2;
+			grassSprites[spriteChoice].setPosition(
+					(grassSprites[spriteChoice].getTexture()->getSize().x
+					* grassSprites[spriteChoice].getScale().x) * i,
+					grassSprites[spriteChoice].getTexture()->getSize().x
+					+ grassOffset);
+			wallp->renderBuff->draw(grassSprites[spriteChoice]);
 			i++;
 		}
 	}
 
-	if(sunYPos < 200){
+	if(sunYPos < (3 * 16) + grassOffset){
 		redrawGrass = true;
 	}else{
 		redrawGrass = false;
