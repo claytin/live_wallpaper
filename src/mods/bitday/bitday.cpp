@@ -2,44 +2,63 @@
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string>
 
 #include "../../Wallpaper.h"
 #include "images.h"
-//#include "Wallpaper.h"
+
+#define NUM_GRASS_TEXTURES 2
+#define NUM_CLOUD_TEXTURES 5
 
 Wallpaper * wallp;
 int sunRadius;
-long seed;
+long seed, test;
 
 //sprite for stuff
-sf::Sprite grassSprite0, grassSprite1;
+sf::Sprite *grassSprites;
+sf::Sprite *cloudSprites;
 
 extern "C" int init(Wallpaper * set){
-	std::cout << "inited" << std::endl;
-
 	set->refresh = 0.01;	//once every second
 	wallp = set;
 
 	//scene settings
 	sunRadius = 25;
 	seed = time(NULL);
+	test = seed;
 
 	//create grass
-	sf::Texture * grassTexture0 = new sf::Texture;
-	sf::Texture * grassTexture1 = new sf::Texture;
-	if (!grassTexture0->loadFromFile("grass0.png")
-			|| !grassTexture1->loadFromFile("grass1.png")){
-		std::cout << "couldn't load texture" << std::endl;
-		return 1;
-	}
+	sf::Texture * grassTextures = new sf::Texture[NUM_GRASS_TEXTURES];
 	
-	grassSprite0.setTexture(*grassTexture0);
-	grassSprite1.setTexture(*grassTexture1);
+	//load textures
+	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
+		std::string textureName = "grass" + std::to_string(i) + ".png";
+		if (!grassTextures[i].loadFromFile(textureName)){
+			std::cout << "couldn't load texture: \"" << textureName << '"'
+				<< std::endl;
+			return 1;
+		}
+	}
+	grassSprites = new sf::Sprite[NUM_GRASS_TEXTURES];
+	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
+		grassSprites[i].setTexture(grassTextures[i]);
+		grassSprites[i].setScale(3, -3);
+	}
 
-	//grassSprite0.setScale(sf::Vector2f(3.0f, 3.0f));
-	//grassSprite1.setScale(sf::Vector2f(3.0f, 3.0f));
-	grassSprite0.setScale(3, -3);
-	grassSprite1.setScale(3, -3);
+	//cloud stuff
+	sf::Texture * cloudTextures = new sf::Texture[NUM_CLOUD_TEXTURES];
+	for(int i = 0; i < NUM_CLOUD_TEXTURES; i++){
+		std::string textureName = "cloud" + std::to_string(i) + ".png";
+		if (!cloudTextures[i].loadFromFile(textureName)){
+			std::cout << "couldn't load texture: \"" << textureName << '"'
+				<< std::endl;
+			return 1;
+		}
+	}
+	cloudSprites = new sf::Sprite[NUM_CLOUD_TEXTURES];
+	for(int i = 0; i < NUM_CLOUD_TEXTURES; i++){
+		cloudSprites[i].setTexture(cloudTextures[i]);
+	}
 
 	return 0;
 }
@@ -48,9 +67,8 @@ extern "C" int redraw(void){
 	const bool redrawGrass = true;
 
 	sf::CircleShape shape(sunRadius);
-	shape.setFillColor(sf::Color::White);
 
-	long curtime = (seed += 60);
+	long curtime = (test += 60 * 5);
 	//long curtime = time(NULL);
 	struct tm *tm_struct = localtime(&curtime);
 	long dayInSec = (tm_struct->tm_hour * 60 * 60)
@@ -59,14 +77,15 @@ extern "C" int redraw(void){
 	const long dayTotalSec = 24 * 60 * 60;
 	double DayProgress = ((float)dayInSec / (float)dayTotalSec);
 
-	std::cout << "time: " <<  tm_struct->tm_hour << ':' << tm_struct->tm_min 
-		<< ':' << tm_struct->tm_sec<< std::endl;
+	std::cout << "time: " <<  tm_struct->tm_hour << ':' << tm_struct->tm_min
+		<< ':' << tm_struct->tm_sec << " prog: " << DayProgress * 100 << '%'
+		<< std::endl;
 
 	float xpos = DayProgress * (wallp->width + (sunRadius * 2)) - (sunRadius * 2);
 	float ypos = sin(DayProgress * 3) * (wallp->height - (sunRadius * 2.5));
 
+	shape.setFillColor(sf::Color(DayProgress * 255, (1 - DayProgress) * 255, (1 - DayProgress) * 100));
 	shape.setPosition(xpos, ypos);
-	wallp->renderBuff->clear();
 	wallp->renderBuff->draw(shape);
 
 	if(redrawGrass){
@@ -75,31 +94,29 @@ extern "C" int redraw(void){
 		sf::RectangleShape grassRect(sf::Vector2f(wallp->width, 50));
 		grassRect.setFillColor(sf::Color(131, 203, 83));
 		wallp->renderBuff->draw(grassRect);
-		while((grassSprite0.getTexture()->getSize().x
-					* grassSprite0.getScale().x) * i < wallp->width){
+		while((grassSprites[0].getTexture()->getSize().x
+					* grassSprites[0].getScale().x) * i < wallp->width){
 			if(rand() % 2){
-				grassSprite0.setPosition(
-						(grassSprite0.getTexture()->getSize().x
-						* grassSprite0.getScale().x) * i,
-						grassSprite0.getTexture()->getSize().x);
-				wallp->renderBuff->draw(grassSprite0);
+				grassSprites[0].setPosition(
+						(grassSprites[0].getTexture()->getSize().x
+						* grassSprites[0].getScale().x) * i,
+						grassSprites[0].getTexture()->getSize().x);
+				wallp->renderBuff->draw(grassSprites[0]);
 			}else{
-				grassSprite1.setPosition(
-						(grassSprite1.getTexture()->getSize().x
-						* grassSprite1.getScale().x) * i,
-						grassSprite1.getTexture()->getSize().x);
-				wallp->renderBuff->draw(grassSprite1);
+				grassSprites[1].setPosition(
+						(grassSprites[1].getTexture()->getSize().x
+						* grassSprites[1].getScale().x) * i,
+						grassSprites[1].getTexture()->getSize().x);
+				wallp->renderBuff->draw(grassSprites[1]);
 			}
 			i++;
 		}
-
 	}
 
 	return 0;
 }
 
 extern "C" int deinit(void){
-	delete grassSprite0.getTexture();
-	delete grassSprite1.getTexture();
+	delete [] grassSprites;
 	return 0;
 }
