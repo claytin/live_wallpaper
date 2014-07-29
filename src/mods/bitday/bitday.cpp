@@ -102,8 +102,8 @@ extern "C" int redraw(void){
 	struct tm *tm_struct = localtime(&curtime);
 	long dayInSec =
 		(tm_struct->tm_hour * MINUTES_IN_AN_HOUR * SECONDS_IN_A_MINUTE)
-				+ (tm_struct->tm_min * SECONDS_IN_A_MINUTE)
-				+ tm_struct->tm_sec;
+		+ (tm_struct->tm_min * SECONDS_IN_A_MINUTE)
+		+ tm_struct->tm_sec;
 
 	const long dayTotalSec = HOURS_IN_A_DAY
 		* MINUTES_IN_AN_HOUR
@@ -149,7 +149,7 @@ extern "C" int redraw(void){
 			int spriteChoice = rand() % 2;
 			grassSprites[spriteChoice].setPosition(
 					(grassSprites[spriteChoice].getTexture()->getSize().x
-					* grassSprites[spriteChoice].getScale().x) * i,
+					 * grassSprites[spriteChoice].getScale().x) * i,
 					grassSprites[spriteChoice].getTexture()->getSize().x
 					+ grassOffset);
 			wallp->renderBuff->draw(grassSprites[spriteChoice]);
