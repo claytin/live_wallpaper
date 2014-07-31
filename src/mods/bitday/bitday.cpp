@@ -15,20 +15,32 @@
 #define MINUTES_IN_AN_HOUR 60
 #define SECONDS_IN_A_MINUTE 60
 
-Wallpaper * wallp;
-long seed, test;	//keep same seed
+long test;
+
+Wallpaper *wallp;	//holds all the info it needs
+
+long seed;	//keep same seed
 bool redrawGrass;
 
 //settings
 int sunRadius, grassScale, grassOffset;
-float sunA, sunB, sunC;
+float sunA, sunB, sunC;	//sun parabola stuff
 
 //sprite for stuff
-sf::Sprite *grassSprites;
-sf::Sprite *cloudSprites;
+sf::Sprite *grassSegmentSprites;	//sprite for every different ground type
+sf::Sprite *cloudSprites;	//sprite for every diffferent cloud
 
-//pre rendered grass texture
-sf::RenderTexture renderedGrassTexture;
+//holds the entire rendered grass, about as big as the screen width
+sf::Sprite renderedGrassSprite;
+sf::RenderTexture *renderedGrassTexture;
+
+//function defs
+extern "C" int init(Wallpaper *);
+extern "C" int redraw(void);
+extern "C" int deinit(void);
+sf::RenderTexture* drawGrass(sf::RenderTexture *);
+int initGrass(void);
+int initClouds(void);
 
 extern "C" int init(Wallpaper * set){
 	set->refresh = 0.01;	//once every second
@@ -47,7 +59,20 @@ extern "C" int init(Wallpaper * set){
 	test = seed;
 	redrawGrass = true;
 
-	//create grass
+	if(initGrass() || initClouds()){
+		return 1;
+	}
+
+	return 0;
+}
+
+extern "C" int deinit(void){
+	delete [] grassSegmentSprites;
+	return 0;
+}
+
+int initGrass(void){
+	//create grass texture for each fragment
 	sf::Texture * grassTextures = new sf::Texture[NUM_GRASS_TEXTURES];
 	
 	//load textures
@@ -59,12 +84,25 @@ extern "C" int init(Wallpaper * set){
 			return 1;
 		}
 	}
-	grassSprites = new sf::Sprite[NUM_GRASS_TEXTURES];
+
+	//crate sprite for each fragment
+	grassSegmentSprites = new sf::Sprite[NUM_GRASS_TEXTURES];
 	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
-		grassSprites[i].setTexture(grassTextures[i]);
-		grassSprites[i].setScale(grassScale, -grassScale);
+		grassSegmentSprites[i].setTexture(grassTextures[i]);
+		grassSegmentSprites[i].setScale(grassScale, -grassScale);
 	}
 
+	//create texture and sprite to hold rendered fragments
+	renderedGrassTexture = new sf::RenderTexture();
+	renderedGrassTexture->create(wallp->width, wallp->height);
+	renderedGrassSprite.setTexture(renderedGrassTexture->getTexture());
+
+	renderedGrassTexture =  drawGrass(renderedGrassTexture);
+
+	return 0;
+}
+
+int initClouds(void){
 	//cloud stuff
 	sf::Texture * cloudTextures = new sf::Texture[NUM_CLOUD_TEXTURES];
 	for(int i = 0; i < NUM_CLOUD_TEXTURES; i++){
@@ -83,14 +121,32 @@ extern "C" int init(Wallpaper * set){
 	return 0;
 }
 
-extern "C" int deinit(void){
-	delete [] grassSprites;
-	return 0;
-}
+sf::RenderTexture* drawGrass(sf::RenderTexture * texture){
+	//draw a rectangle behind the grass from bottom of screen to grass middle
+	sf::RectangleShape grassRect(sf::Vector2f(wallp->width, 50
+				+ grassOffset));
+	grassRect.setFillColor(sf::Color(131, 203, 83));
+	texture->draw(grassRect);
 
-sf::RenderTexture drawGrass(void){
-	sf::RenderTexture grass;
-	return grass;
+
+	//always use the same random otherwise the grass will change between redraws
+	srand(seed);
+
+	//while there is screen space left keep drawing a random piece of grass
+	int i = 0;
+	while((grassSegmentSprites[0].getTexture()->getSize().x
+				* grassSegmentSprites[0].getScale().x) * i < wallp->width){
+		int spriteChoice = rand() % 2;
+		grassSegmentSprites[spriteChoice].setPosition(
+				(grassSegmentSprites[spriteChoice].getTexture()->getSize().x
+				 * grassSegmentSprites[spriteChoice].getScale().x) * i,
+				grassSegmentSprites[spriteChoice].getTexture()->getSize().x
+				+ grassOffset);
+		texture->draw(grassSegmentSprites[spriteChoice]);
+		i++;
+	}
+
+	return texture;
 }
 
 extern "C" int redraw(void){
@@ -137,26 +193,10 @@ extern "C" int redraw(void){
 	wallp->renderBuff->clear();
 	wallp->renderBuff->draw(shape);
 
-	if(redrawGrass){
-		srand(seed);
-		int i = 0;
-		sf::RectangleShape grassRect(sf::Vector2f(wallp->width, 50
-					+ grassOffset));
-		grassRect.setFillColor(sf::Color(131, 203, 83));
-		wallp->renderBuff->draw(grassRect);
-		while((grassSprites[0].getTexture()->getSize().x
-					* grassSprites[0].getScale().x) * i < wallp->width){
-			int spriteChoice = rand() % 2;
-			grassSprites[spriteChoice].setPosition(
-					(grassSprites[spriteChoice].getTexture()->getSize().x
-					 * grassSprites[spriteChoice].getScale().x) * i,
-					grassSprites[spriteChoice].getTexture()->getSize().x
-					+ grassOffset);
-			wallp->renderBuff->draw(grassSprites[spriteChoice]);
-			i++;
-		}
-	}
+	//renderedGrassTexture();
+	wallp->renderBuff->draw(renderedGrassSprite);
 
+	std::cout << "500" << std::endl;
 	if(sunYPos < 500){
 		redrawGrass = true;
 	}else{
