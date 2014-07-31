@@ -89,7 +89,7 @@ int initGrass(void){
 	grassSegmentSprites = new sf::Sprite[NUM_GRASS_TEXTURES];
 	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
 		grassSegmentSprites[i].setTexture(grassTextures[i]);
-		grassSegmentSprites[i].setScale(grassScale, -grassScale);
+		grassSegmentSprites[i].setScale(grassScale, grassScale);
 	}
 
 	//create texture and sprite to hold rendered fragments
@@ -145,6 +145,7 @@ sf::RenderTexture* drawGrass(sf::RenderTexture * texture){
 		texture->draw(grassSegmentSprites[spriteChoice]);
 		i++;
 	}
+	texture->display();
 
 	return texture;
 }
@@ -193,8 +194,9 @@ extern "C" int redraw(void){
 	wallp->renderBuff->clear();
 	wallp->renderBuff->draw(shape);
 
-	//renderedGrassTexture();
+	renderedGrassTexture = drawGrass(renderedGrassTexture);
 	wallp->renderBuff->draw(renderedGrassSprite);
+	wallp->renderBuff->display();
 
 	std::cout << "500" << std::endl;
 	if(sunYPos < 500){
