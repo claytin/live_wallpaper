@@ -28,8 +28,8 @@ int main(){
 
 	//defaults and stuff
 	Wallpaper wallset = {
-		640 * 2,
-		(int)(480 * 1.5),
+		640,
+		480,
 		60,
 		&buff
 	};
