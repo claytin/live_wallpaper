@@ -2,9 +2,7 @@
 CC = g++
 
 #dirs
-OBJDIR=./obj/
 SRCDIR=../src/
-BINDIR=./bin/
 MODDIR=../src/mods/
 
 #find all objects... this is ass
@@ -21,12 +19,9 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(LIBS) $(CFLAGS) -o $(TARGET) $^
 
-#%.o: %.cpp
-#	$(CC) $(CPFLAGS) -c $< -o $(patsubst $(SRCDIR)%,$(OBJDIR)%,$@)
-
 %.o: $(SRCDIR)%.cpp
 	    $(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -rf $(OBJDIR)/*.o
-	rm -rf $(BINDIR)$(TARGET)
+	rm -rf *.o
+	rm -rf $(TARGET)
