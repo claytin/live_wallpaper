@@ -94,8 +94,10 @@ int initGrass(void){
 
 	//create texture and sprite to hold rendered fragments
 	renderedGrassTexture = new sf::RenderTexture();
-	renderedGrassTexture->create(wallp->width, wallp->height);
+	renderedGrassTexture->create(wallp->width,
+			(grassSegmentSprites[0].getTexture()->getSize().y * grassScale) + grassOffset);
 	renderedGrassSprite.setTexture(renderedGrassTexture->getTexture());
+	renderedGrassSprite.setPosition(0, wallp->height - grassOffset);
 
 	renderedGrassTexture =  drawGrass(renderedGrassTexture);
 
@@ -124,7 +126,7 @@ int initClouds(void){
 sf::RenderTexture* drawGrass(sf::RenderTexture * texture){
 	//draw a rectangle behind the grass from bottom of screen to grass middle
 	sf::RectangleShape grassRect(sf::Vector2f(wallp->width, grassOffset - (5 * grassScale)));
-	grassRect.setPosition(0, wallp->height - grassRect.getSize().y);
+	grassRect.setPosition(0, 5 * grassScale);
 	grassRect.setFillColor(sf::Color(131, 203, 83));
 	texture->draw(grassRect);
 
@@ -132,7 +134,7 @@ sf::RenderTexture* drawGrass(sf::RenderTexture * texture){
 	srand(seed);
 	
 	//grass y never changes so...
-	float grassY = wallp->height - grassOffset;
+	float grassY = 0;
 
 	//while there is screen space left keep drawing a random piece of grass
 	int i = 0;
