@@ -49,10 +49,10 @@ extern "C" int init(Wallpaper * set){
 	//scene settings
 	grassScale = 3;
 	sunRadius = 25;
-	grassOffset = 100;
+	grassOffset = 140;
 	sunA = 400;
 	sunB = 0;
-	sunC = -(wallp->height - (sunRadius * 3));
+	sunC = sunRadius;	//one radius from the top
 
 	//setup stuff
 	seed = time(NULL);
@@ -123,25 +123,28 @@ int initClouds(void){
 
 sf::RenderTexture* drawGrass(sf::RenderTexture * texture){
 	//draw a rectangle behind the grass from bottom of screen to grass middle
-	sf::RectangleShape grassRect(sf::Vector2f(wallp->width, 50
-				+ grassOffset));
+	sf::RectangleShape grassRect(sf::Vector2f(wallp->width, grassOffset - (5 * grassScale)));
+	grassRect.setPosition(0, wallp->height - grassRect.getSize().y);
 	grassRect.setFillColor(sf::Color(131, 203, 83));
 	texture->draw(grassRect);
 
-
 	//always use the same random otherwise the grass will change between redraws
 	srand(seed);
+	
+	//grass y never changes so...
+	float grassY = wallp->height - grassOffset;
 
 	//while there is screen space left keep drawing a random piece of grass
 	int i = 0;
 	while((grassSegmentSprites[0].getTexture()->getSize().x
 				* grassSegmentSprites[0].getScale().x) * i < wallp->width){
 		int spriteChoice = rand() % 2;
-		grassSegmentSprites[spriteChoice].setPosition(
-				(grassSegmentSprites[spriteChoice].getTexture()->getSize().x
-				 * grassSegmentSprites[spriteChoice].getScale().x) * i,
-				grassSegmentSprites[spriteChoice].getTexture()->getSize().x
-				+ grassOffset);
+
+		float grassX =
+			(grassSegmentSprites[spriteChoice].getTexture()->getSize().x
+			* grassSegmentSprites[spriteChoice].getScale().x) * i;
+		
+		grassSegmentSprites[spriteChoice].setPosition(grassX, grassY);
 		texture->draw(grassSegmentSprites[spriteChoice]);
 		i++;
 	}
@@ -181,7 +184,7 @@ extern "C" int redraw(void){
 	//some fancy parabola stuff, thanks shoemaker
 	float x = (sunXPos - (wallp->width / 2)) / (wallp->width / 2);
 
-	float sunYPos = (-((sunA * pow(x, 2)) + (sunB * x) + sunC) + 1);
+	float sunYPos = ((sunA * pow(x, 2)) + (sunB * x) + sunC) + 1;
 
 	//correct for sun radius
 	sunXPos -= sunRadius;
