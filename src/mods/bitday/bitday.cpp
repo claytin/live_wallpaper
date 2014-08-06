@@ -7,6 +7,9 @@
 #include "../../Wallpaper.h"
 #include "images.h"
 
+//textures all saved with <type><num>.png names
+//ex: grass0.png would be the first grass texture
+//the max number of each is listed here
 #define NUM_GRASS_TEXTURES 2
 #define NUM_CLOUD_TEXTURES 5
 #define NUM_WATER_TEXTURES 1
@@ -16,52 +19,82 @@
 #define MINUTES_IN_AN_HOUR 60
 #define SECONDS_IN_A_MINUTE 60
 
+//test stuff idk
 long test;
 
-Wallpaper *wallp;	//holds all the info it needs
+//all information about the wallpaper needed while drawing
+Wallpaper *wallp;
 
-long seed;	//keep same seed
-bool redrawGrass;
 
-//settings
-int sunRadius, grassOffset;
-float sunA, sunB, sunC;	//sun parabola stuff
+//use the same seed for the entire session so redrawing
+//with random values will be consistent
+long seed;
+
+//distance from bottom of screen that grass will be draw at
+int grassOffset;
+
+//scale of each sprite. 1 means each texture pixel is one pixel on screen
 int grassScale, waterScale, cloudScale;
 int waterOffset;
+
+
+//how many clouds to generate depending on time of day
+//day and night have their own cloud buffers
+//this is the number of clouds that will be rendered to each buffer
 int cloudCountDay;
 int cloudCountNight;
 
-//sprite for stuff
-sf::Sprite *grassSegmentSprites;	//sprite for every different ground type
-sf::Sprite *cloudSprites;	//sprite for every diffferent cloud
+//size of sun obviously
+int sunRadius;
+
+//sun y position is calculation with a parabola using a b c
+float sunA, sunB, sunC;
+
+//holds the sprites that have been directly loaded from the texture files
+sf::Sprite *grassSegmentSprites;
+sf::Sprite *cloudSprites;
 sf::Sprite *waterSegmentSprites;
 
-//holds the entire rendered grass, about as big as the screen width
+//the segment sprites are rendered to these sprites
+//each "rendered" sprite will likely have multiple "segment"
+//sprites rendered to it
 sf::Sprite renderedGrassSprite;
 sf::RenderTexture *renderedGrassTexture;
-
 sf::Sprite renderedWaterSprite;
 sf::RenderTexture *renderedWaterTexture;
 
-//two textures for paralax
-sf::Sprite renderedCloudSprite0;
-sf::RenderTexture *renderedCloudTexture0;
-sf::Sprite renderedCloudSprite1;
-sf::RenderTexture *renderedCloudTexture1;
+//rendered sprites for clouds
+//there is a separate one for day and night
+//allowing different number of clouds to be rendered
+//depending on time of day
+sf::Sprite renderedCloudSpriteDay;
+sf::RenderTexture *renderedCloudTextureDay;
+sf::Sprite renderedCloudSpriteNight;
+sf::RenderTexture *renderedCloudTextureNight;
 
-//function defs
+//these are all the functions that are called by the wallpaper
 extern "C" int init(Wallpaper *);
 extern "C" int redraw(void);
 extern "C" int deinit(void);
+
+//renders sprites to a given texture
 sf::RenderTexture* drawGrass(sf::RenderTexture *);
 sf::RenderTexture* drawWater(sf::RenderTexture *);
-sf::RenderTexture* drawClouds(sf::RenderTexture *);
+
+//same as other draw functions except it takes bool isDay and int seed
+//isDay: wether to draw using "cloudCoundDay" or "cloudCoundNight"
+//seed: random seed to use when generating clouds, this is here to allow
+//the clouds to be redraw while offscreen in a different configuration
+sf::RenderTexture* drawClouds(sf::RenderTexture *, bool isDay,
+	int seed);
+
+//loads textures and creates sprites/rendertextures needed for each object
 int initGrass(void);
 int initWater(void);
 int initClouds(void);
 
 extern "C" int init(Wallpaper * set){
-	set->refresh = 0.01;	//once every second
+	set->refresh = 0.01; //once every second
 	wallp = set;
 
 	//scene settings
@@ -75,13 +108,15 @@ extern "C" int init(Wallpaper * set){
 	cloudCountDay = 20;
 	sunA = 400;
 	sunB = 0;
-	sunC = sunRadius;	//one radius from the top
+	sunC = sunRadius; //one radius from the top
 
 	//setup stuff
 	seed = time(NULL);
 	test = seed;
-	redrawGrass = true;
 
+	//load/create all the sprites and stuff
+	//if one of them has an error then everything
+	//is aborted
 	if(initGrass() || initClouds() || initWater()){
 		return 1;
 	}
@@ -90,9 +125,19 @@ extern "C" int init(Wallpaper * set){
 }
 
 extern "C" int deinit(void){
+	//clean everything up
 	delete [] grassSegmentSprites;
+	delete [] cloudSprites;
+	delete [] waterSegmentSprites;
+	delete renderedGrassTexture;
+	delete renderedWaterTexture;
+	delete renderedCloudTextureDay;
+	delete renderedCloudTextureNight;
 	return 0;
 }
+
+//TODO: temp variable fucko
+int cloudProg = 0;
 
 extern "C" int redraw(void){
 	sf::CircleShape shape(sunRadius);
@@ -101,26 +146,25 @@ extern "C" int redraw(void){
 	//long curtime = time(NULL);
 
 	struct tm *tm_struct = localtime(&curtime);
-	long dayInSec =
-		(tm_struct->tm_hour * MINUTES_IN_AN_HOUR * SECONDS_IN_A_MINUTE)
-		+ (tm_struct->tm_min * SECONDS_IN_A_MINUTE)
-		+ tm_struct->tm_sec;
+	long dayInSec = (tm_struct->tm_hour * MINUTES_IN_AN_HOUR *
+		SECONDS_IN_A_MINUTE) + (tm_struct->tm_min * SECONDS_IN_A_MINUTE) +
+		tm_struct->tm_sec;
 
-	const long dayTotalSec = HOURS_IN_A_DAY
-		* MINUTES_IN_AN_HOUR
-		* SECONDS_IN_A_MINUTE;
+	const long dayTotalSec = HOURS_IN_A_DAY *
+		MINUTES_IN_AN_HOUR *
+		SECONDS_IN_A_MINUTE;
 
 	double DayProgress = ((float)dayInSec / (float)dayTotalSec);
 
 	//print status message
 	std::cout << "time: " <<  tm_struct->tm_hour << ':' << tm_struct->tm_min
-		<< ':' << tm_struct->tm_sec << " prog: " << DayProgress * 100 << '%'
-		<< std::endl;
+		<< ':' << tm_struct->tm_sec << " prog: " << DayProgress * 100
+		<< '%' << std::endl;
 
 	//x pos will correspond to dayprogress with min being -diameter(radius*2)
 	//and max being the screen width
-	float sunXPos = (DayProgress * (wallp->width + (sunRadius * 2)))
-		- (sunRadius * 2);
+	float sunXPos = (DayProgress * (wallp->width + (sunRadius * 2))) -
+		(sunRadius * 2);
 
 	//some fancy parabola stuff, thanks shoemaker
 	float x = (sunXPos - (wallp->width / 2)) / (wallp->width / 2);
@@ -130,8 +174,9 @@ extern "C" int redraw(void){
 	sunXPos -= sunRadius;
 
 	shape.setFillColor(sf::Color((tm_struct->tm_yday * 50) % 256,
-				(tm_struct->tm_yday * 100) % 256,
-				(tm_struct->tm_yday * 15) % 256));
+		(tm_struct->tm_yday * 100) % 256,
+		(tm_struct->tm_yday * 15) % 256));
+
 	shape.setPosition(sunXPos, sunYPos);
 
 	wallp->renderBuff->clear(sf::Color(115, 224, 255));
@@ -139,22 +184,25 @@ extern "C" int redraw(void){
 
 	//renderedWaterTexture = drawWater(renderedWaterTexture);
 	wallp->renderBuff->draw(renderedWaterSprite);
-	wallp->renderBuff->display();
 
 	//renderedGrassTexture = drawGrass(renderedGrassTexture);
 	wallp->renderBuff->draw(renderedGrassSprite);
-	wallp->renderBuff->display();
 
-	renderedCloudTexture = drawClouds(renderedCloudTexture);
-	wallp->renderBuff->draw(renderedCloudSprite);
-	wallp->renderBuff->display();
+	//cloud stuff
+	cloudProg++;
+	//renderedCloudTextureDay = drawClouds(renderedCloudTextureDay, true, cloudProg);
+	renderedCloudSpriteDay.setPosition(((cloudProg + wallp->width) %
+		(wallp->width * 2)) - wallp->width, 0);
 
-	std::cout << "500" << std::endl;
-	if(sunYPos < 500){
-		redrawGrass = true;
-	}else{
-		redrawGrass = false;
-	}
+	renderedCloudTextureNight = drawClouds(renderedCloudTextureNight, false, cloudProg);
+	renderedCloudSpriteNight.setPosition((cloudProg % (wallp->width * 2)) -
+		wallp->width, 0);
+
+	//draw clouds and stuff
+	wallp->renderBuff->draw(renderedCloudSpriteDay);
+	wallp->renderBuff->draw(renderedCloudSpriteNight);
+
+	wallp->renderBuff->display();
 
 	return 0;
 }
@@ -167,8 +215,8 @@ int initGrass(void){
 	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
 		std::string textureName = "grass" + std::to_string(i) + ".png";
 		if (!grassTextures[i].loadFromFile(textureName)){
-			std::cout << "couldn't load texture: \"" << textureName << '"'
-				<< std::endl;
+			std::cout << "couldn't load texture: \"" << textureName
+				<< '"' << std::endl;
 			return 1;
 		}
 	}
@@ -183,8 +231,9 @@ int initGrass(void){
 	//create texture and sprite to hold rendered fragments
 	renderedGrassTexture = new sf::RenderTexture();
 	renderedGrassTexture->create(wallp->width,
-			(grassSegmentSprites[0].getTexture()->getSize().y * grassScale)
-			+ grassOffset);
+		(grassSegmentSprites[0].getTexture()->getSize().y *
+		 grassScale) + grassOffset);
+
 	renderedGrassSprite.setTexture(renderedGrassTexture->getTexture());
 	renderedGrassSprite.setPosition(0, wallp->height - grassOffset);
 
@@ -200,8 +249,8 @@ int initWater(void){
 	for(int i = 0; i < NUM_WATER_TEXTURES; i++){
 		std::string textureName = "water" + std::to_string(i) + ".png";
 		if (!waterTextures[i].loadFromFile(textureName)){
-			std::cout << "couldn't load texture: \"" << textureName << '"'
-				<< std::endl;
+			std::cout << "couldn't load texture: \""
+				<< textureName << '"' << std::endl;
 			return 1;
 		}
 	}
@@ -216,8 +265,8 @@ int initWater(void){
 	//create texture and sprite to hold rendered fragments
 	renderedWaterTexture = new sf::RenderTexture();
 	renderedWaterTexture->create(wallp->width,
-			(waterSegmentSprites[0].getTexture()->getSize().y * waterScale)
-			+ waterOffset);
+			(waterSegmentSprites[0].getTexture()->getSize().y * waterScale) +
+			waterOffset);
 
 	renderedWaterSprite.setTexture(renderedWaterTexture->getTexture());
 	renderedWaterSprite.setPosition(0, wallp->height - waterOffset);
@@ -233,8 +282,8 @@ int initClouds(void){
 	for(int i = 0; i < NUM_CLOUD_TEXTURES; i++){
 		std::string textureName = "cloud" + std::to_string(i) + ".png";
 		if (!cloudTextures[i].loadFromFile(textureName)){
-			std::cout << "couldn't load texture: \"" << textureName << '"'
-				<< std::endl;
+			std::cout << "couldn't load texture: \""
+				<< textureName << '"' << std::endl;
 			return 1;
 		}
 	}
@@ -246,26 +295,29 @@ int initClouds(void){
 	}
 
 	//create both textures
-	renderedCloudTexture0 = new sf::RenderTexture();
-	renderedCloudTexture0->create(wallp->width, wallp->height);
-	renderedCloudTexture1 = new sf::RenderTexture();
-	renderedCloudTexture1->create(wallp->width, wallp->height);
+	renderedCloudTextureDay = new sf::RenderTexture();
+	renderedCloudTextureDay->create(wallp->width, wallp->height);
+	renderedCloudTextureNight = new sf::RenderTexture();
+	renderedCloudTextureNight->create(wallp->width, wallp->height);
 
-	renderedCloudSprite0.setTexture(renderedCloudTexture0->getTexture());
-	renderedCloudSprite0.setPosition(0, 0);
-	renderedCloudSprite1.setTexture(renderedCloudTexture1->getTexture());
-	renderedCloudSprite1.setPosition(0, 0);
+	renderedCloudSpriteDay.setTexture(renderedCloudTextureDay->getTexture());
+	renderedCloudSpriteDay.setPosition(0, 0);
+	renderedCloudSpriteNight.setTexture(renderedCloudTextureNight->
+		getTexture());
+	renderedCloudSpriteNight.setPosition(0, 0);
 
-	renderedCloudTexture0 = drawClouds(renderedCloudTexture0);
-	renderedCloudTexture1 = drawClouds(renderedCloudTexture1);
+	renderedCloudTextureDay = drawClouds(renderedCloudTextureDay, true, seed);
+	renderedCloudTextureNight = drawClouds(renderedCloudTextureNight, false,
+		seed);
 
 	return 0;
 }
 
 sf::RenderTexture* drawGrass(sf::RenderTexture *texture){
 	//draw a rectangle behind the grass from bottom of screen to grass middle
-	sf::RectangleShape grassRect(sf::Vector2f(wallp->width, grassOffset
-		- (5 * grassScale)));
+	sf::RectangleShape grassRect(sf::Vector2f(wallp->width,
+		grassOffset - (5 * grassScale)));
+
 	grassRect.setPosition(0, 5 * grassScale);
 	grassRect.setFillColor(sf::Color(131, 203, 83));
 	texture->draw(grassRect);
@@ -278,13 +330,13 @@ sf::RenderTexture* drawGrass(sf::RenderTexture *texture){
 
 	//while there is screen space left keep drawing a random piece of grass
 	int i = 0;
-	while((grassSegmentSprites[0].getTexture()->getSize().x
-				* grassSegmentSprites[0].getScale().x) * i < wallp->width){
+	while((grassSegmentSprites[0].getTexture()->getSize().x *
+			grassSegmentSprites[0].getScale().x) * i < wallp->width){
 		int spriteChoice = rand() % 2;
 
 		float grassX =
-			(grassSegmentSprites[spriteChoice].getTexture()->getSize().x
-			* grassSegmentSprites[spriteChoice].getScale().x) * i;
+			(grassSegmentSprites[spriteChoice].getTexture()->getSize().x *
+				grassSegmentSprites[spriteChoice].getScale().x) * i;
 
 		grassSegmentSprites[spriteChoice].setPosition(grassX, grassY);
 		texture->draw(grassSegmentSprites[spriteChoice]);
@@ -296,8 +348,8 @@ sf::RenderTexture* drawGrass(sf::RenderTexture *texture){
 }
 
 sf::RenderTexture* drawWater(sf::RenderTexture *texture){
-	sf::RectangleShape waterRect(sf::Vector2f(wallp->width, wallp->height
-		- grassOffset));
+	sf::RectangleShape waterRect(sf::Vector2f(wallp->width,
+		wallp->height - grassOffset));
 
 	waterRect.setPosition(0, 5 * grassScale);
 	waterRect.setFillColor(sf::Color(92, 166, 255));
@@ -305,12 +357,11 @@ sf::RenderTexture* drawWater(sf::RenderTexture *texture){
 
 	float waterY = 0;
 
-	for(int i = 0; (int)(i * waterScale
-			* waterSegmentSprites->getTexture()->getSize().x)
-			< wallp->width; i++){
+	for(int i = 0; (int)(i * waterScale * waterSegmentSprites->getTexture()->
+			getSize().x) < wallp->width; i++){
 		float waterX =
-			(waterSegmentSprites[0].getTexture()->getSize().x
-			* waterSegmentSprites[0].getScale().x) * i;
+			(waterSegmentSprites[0].getTexture()->getSize().x *
+				waterSegmentSprites[0].getScale().x) * i;
 
 		waterSegmentSprites[0].setPosition(waterX, waterY);
 		texture->draw(waterSegmentSprites[0]);
@@ -321,13 +372,24 @@ sf::RenderTexture* drawWater(sf::RenderTexture *texture){
 	return texture;
 }
 
-sf::RenderTexture* drawClouds(sf::RenderTexture *texture){
-	srand(seed + time(NULL));
+sf::RenderTexture* drawClouds(sf::RenderTexture *texture, bool isDay,
+		int cloudSeed){
+	srand(cloudSeed);
 	texture->clear(sf::Color(0, 0, 0, 0));
+
+	int cloudCount;
+	if(isDay){
+		cloudCount = cloudCountDay;
+	}else{
+		cloudCount = cloudCountNight;
+	}
+
 	for(int i = 0; i < cloudCount; i++){
-		cloudSprites[rand() % NUM_CLOUD_TEXTURES].setPosition(rand() % (wallp->width
-			- (cloudSprites[rand() % NUM_CLOUD_TEXTURES].getTexture()->getSize().x
-			* cloudScale)), (rand() % ((wallp->height - waterOffset) / 5)) + 100);
+		cloudSprites[rand() % NUM_CLOUD_TEXTURES].setPosition(rand() %
+			(wallp->width - (cloudSprites[rand() %
+			NUM_CLOUD_TEXTURES].getTexture()->getSize().x *
+			cloudScale)), (rand() % ((wallp->height - waterOffset) / 5)) +
+			100);
 
 		texture->draw(cloudSprites[rand() % NUM_CLOUD_TEXTURES]);
 		texture->display();
