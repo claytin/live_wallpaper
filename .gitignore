@@ -19,6 +19,11 @@
 *.exe
 *.out
 *.app
+walp
 
 #vim stuff
 Session.vim
+
+#image stuff
+*.png
+*.gif
