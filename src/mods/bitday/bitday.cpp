@@ -87,9 +87,9 @@ sf::RenderTexture* drawGrass(sf::RenderTexture *);
 sf::RenderTexture* drawWater(sf::RenderTexture *);
 
 //same as other draw functions except it takes bool isDay and int seed
-//isDay: wether to draw using "cloudCoundDay" or "cloudCoundNight"
+//isDay: whether to draw using "cloudCoundDay" or "cloudCoundNight"
 //seed: random seed to use when generating clouds, this is here to allow
-//the clouds to be redraw while offscreen in a different configuration
+//the clouds to be redraw while off-screen in a different configuration
 sf::RenderTexture* drawClouds(sf::RenderTexture *, bool isDay,
 	int seed);
 
@@ -110,7 +110,7 @@ extern "C" int init(Wallpaper * set){
 	grassOffset = 140;
 	waterOffset = 195;
 	cloudCountNight = 20;
-	cloudCountDay = 20;
+	cloudCountDay = 1;
 	sunA = 400;
 	sunB = 0;
 	sunC = sunRadius; //one radius from the top
@@ -159,7 +159,7 @@ extern "C" int redraw(void){
 	//long curtime = time(NULL);
 
 	struct tm *tm_struct = localtime(&curtime);
-	long dayInSec = (tm_struct->tm_hour * MINUTES_IN_AN_HOUR *
+	long timeInSec = (tm_struct->tm_hour * MINUTES_IN_AN_HOUR *
 		SECONDS_IN_A_MINUTE) + (tm_struct->tm_min * SECONDS_IN_A_MINUTE) +
 		tm_struct->tm_sec;
 
@@ -171,18 +171,42 @@ extern "C" int redraw(void){
 	//0 is midnight (morning)
 	//0.5 is noon
 	//1 is midnight (evening)
-	double DayProgress = ((float)dayInSec / (float)dayTotalSec);
+	double DayProgress = ((float)timeInSec / (float)dayTotalSec);
+
+	//how far the sun is in its path (similar to "DayProgress")
+	//0 sunrise
+	//0.5 noon
+	//1 sunset
+	//its calculated using the sunset and sunrise times
+	double SunProgress = 0;
+
+	//convert sun<rise/set><min/hour> to total seconds
+	const long sunsetInSec = (sunsetHour * MINUTES_IN_AN_HOUR *
+			SECONDS_IN_A_MINUTE) + (sunsetMinute * SECONDS_IN_A_MINUTE);
+	const long sunriseInSec = (sunriseHour * MINUTES_IN_AN_HOUR *
+			SECONDS_IN_A_MINUTE) + (sunriseMinute * SECONDS_IN_A_MINUTE);
+
+	//get amount of time that sun will be out (in seconds)
+	const long sunTotalUpSec = sunsetInSec - sunriseInSec;
+
+	//if sun is currently up and should be rendered/calculated further
+	bool sunUp = timeInSec > sunriseInSec && timeInSec < sunsetInSec;
+
+	if(sunUp){
+		SunProgress = (float)(timeInSec - sunriseInSec) / (float)sunTotalUpSec;
+	}
 
 	//print status message
 	if(tm_struct->tm_min == 0){
-		std::cout << "time: " <<  tm_struct->tm_hour << ':' << tm_struct->tm_min
-			<< ':' << tm_struct->tm_sec << " prog: " << DayProgress * 100
+		std::cout << "time: " <<  tm_struct->tm_hour << ':'
+			<< tm_struct->tm_min << ':' << tm_struct->tm_sec
+			<< " prog: " << DayProgress * 100
 			<< '%' << std::endl;
 	}
 
 	//x pos will correspond to dayprogress with min being -diameter(radius*2)
 	//and max being the screen width
-	float sunXPos = (DayProgress * (wallp->width + (sunRadius * 2))) -
+	float sunXPos = (SunProgress * (wallp->width + (sunRadius * 2))) -
 		(sunRadius * 2);
 
 	//some fancy parabola stuff, thanks shoemaker
@@ -206,7 +230,7 @@ extern "C" int redraw(void){
 	wallp->renderBuff->draw(renderedWaterSprite);
 	wallp->renderBuff->draw(renderedGrassSprite);
 
-	//re gen night clouds at midnight and dayclouds at noon
+	//re-gen night clouds at midnight and dayclouds at noon
 	if(tm_struct->tm_min == 0 && tm_struct->tm_hour == 0){
 		renderedCloudTextureNight = drawClouds(renderedCloudTextureNight,
 			false, time(NULL));
