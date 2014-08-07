@@ -41,7 +41,8 @@ int main(){
 	//now that all the settings have been resolved. itt is time
 	buff.create(wallset.width, wallset.height);
 
-	sf::RenderWindow window(sf::VideoMode(wallset.width, wallset.height), "SFML works!");
+	sf::RenderWindow window(sf::VideoMode(wallset.width, wallset.height),
+		"SFML works!");
 
 	while(true){
 		(*redraw)();
