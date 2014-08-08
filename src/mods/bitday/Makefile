@@ -1,5 +1,5 @@
 CC = g++
-CFLAG = -I../../ -std=c++11
+CFLAG = -I../../ -std=c++11 -Wall
 MOD_DIR = ../../../build/mods/
 TARGET=bitday.so
 

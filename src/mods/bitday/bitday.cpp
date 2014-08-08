@@ -19,12 +19,17 @@
 #define MINUTES_IN_AN_HOUR 60
 #define SECONDS_IN_A_MINUTE 60
 
+//level of verbosity
+//0 = no output not even errors (quiet)
+//1 = normal verbosity (default)
+//2 = debug output
+int verbosity;
+
 //test stuff idk
 long test;
 
 //all information about the wallpaper needed while drawing
 Wallpaper *wallp;
-
 
 //use the same seed for the entire session so redrawing
 //with random values will be consistent
@@ -54,6 +59,12 @@ int sunsetHour;
 int sunsetMinute;
 int sunriseHour;
 int sunriseMinute;
+
+//moon rise/set times (same as sun rise/set...)
+int moonsetHour;
+int moonsetMinute;
+int moonriseHour;
+int moonriseMinute;
 
 //holds the sprites that have been directly loaded from the texture files
 sf::Sprite *grassSegmentSprites;
@@ -110,21 +121,31 @@ extern "C" int init(Wallpaper * set){
 	grassOffset = 140;
 	waterOffset = 195;
 	cloudCountNight = 20;
-	cloudCountDay = 1;
+	cloudCountDay = 5;
 	sunA = 400;
 	sunB = 0;
 	sunC = sunRadius; //one radius from the top
 
 	//default sun times
-	//rise = 6:18, set = 20:08
+	//rise = 6:20, set = 20:00
 	sunriseHour = 6;
-	sunriseMinute = 18;
+	sunriseMinute = 20;
 	sunsetHour = 20;
-	sunsetMinute = 8;
+	sunsetMinute = 0;
+
+	//default moon times
+	//rise = 5:30, set = 6:00
+	moonriseHour = 19;
+	moonriseMinute = 30;
+	moonsetHour = 6;
+	moonsetMinute = 0;
 
 	//setup stuff
 	seed = time(NULL);
 	test = seed;
+
+	//set verbosity to debug for now
+	verbosity = 2;
 
 	//load/create all the sprites and stuff
 	//if one of them has an error then everything
@@ -137,6 +158,9 @@ extern "C" int init(Wallpaper * set){
 }
 
 extern "C" int deinit(void){
+	if(verbosity){
+		std::cout << "cleaning up and exiting" << std::endl;
+	}
 	//clean everything up
 	delete [] grassSegmentSprites;
 	delete [] cloudSprites;
@@ -152,14 +176,14 @@ extern "C" int redraw(void){
 	sf::CircleShape sunShape(sunRadius);
 	sf::CircleShape moonShape(sunRadius);
 
-	sunShape.setFillColor(sf::Color::Red);
-	moonShape.setFillColor(sf::Color::Yellow);
+	sunShape.setFillColor(sf::Color::Yellow);
+	moonShape.setFillColor(sf::Color::Blue);
 
-	long curtime = (test += 60);
-	//long curtime = time(NULL);
+	const long curtime = (test += 60);
+	//const long curtime = time(NULL);
 
 	struct tm *tm_struct = localtime(&curtime);
-	long timeInSec = (tm_struct->tm_hour * MINUTES_IN_AN_HOUR *
+	const long timeInSec = (tm_struct->tm_hour * MINUTES_IN_AN_HOUR *
 		SECONDS_IN_A_MINUTE) + (tm_struct->tm_min * SECONDS_IN_A_MINUTE) +
 		tm_struct->tm_sec;
 
@@ -171,61 +195,114 @@ extern "C" int redraw(void){
 	//0 is midnight (morning)
 	//0.5 is noon
 	//1 is midnight (evening)
-	double DayProgress = ((float)timeInSec / (float)dayTotalSec);
+	const double DayProgress = ((float)timeInSec / (float)dayTotalSec);
 
-	//how far the sun is in its path (similar to "DayProgress")
-	//0 sunrise
-	//0.5 noon
-	//1 sunset
-	//its calculated using the sunset and sunrise times
-	double SunProgress = 0;
 
 	//convert sun<rise/set><min/hour> to total seconds
-	const long sunsetInSec = (sunsetHour * MINUTES_IN_AN_HOUR *
+	const long sunsetTimeInSec = (sunsetHour * MINUTES_IN_AN_HOUR *
 			SECONDS_IN_A_MINUTE) + (sunsetMinute * SECONDS_IN_A_MINUTE);
-	const long sunriseInSec = (sunriseHour * MINUTES_IN_AN_HOUR *
+	const long sunriseTimeInSec = (sunriseHour * MINUTES_IN_AN_HOUR *
 			SECONDS_IN_A_MINUTE) + (sunriseMinute * SECONDS_IN_A_MINUTE);
 
-	//get amount of time that sun will be out (in seconds)
-	const long sunTotalUpSec = sunsetInSec - sunriseInSec;
-
 	//if sun is currently up and should be rendered/calculated further
-	bool sunUp = timeInSec > sunriseInSec && timeInSec < sunsetInSec;
+	const bool sunUp = timeInSec > sunriseTimeInSec && timeInSec < sunsetTimeInSec;
 
+	wallp->renderBuff->clear(sf::Color(115, 224, 255));
+
+	//only draw/calculate sun if it's up
 	if(sunUp){
-		SunProgress = (float)(timeInSec - sunriseInSec) / (float)sunTotalUpSec;
+		//get amount of time that sun will be out (in seconds)
+		const long sunTotalUpSec = sunsetTimeInSec - sunriseTimeInSec;
+
+		//how far the sun is in its path (similar to "DayProgress")
+		//0 sunrise
+		//0.5 noon
+		//1 sunset
+		//its calculated using the sunset and sunrise times
+		double SunProgress = (float)(timeInSec - sunriseTimeInSec) /
+			(float)sunTotalUpSec;
+
+		//x pos will correspond to dayprogress with min being -diameter(radius*2)
+		//and max being the screen width
+		float sunXPos = (SunProgress * (wallp->width + (sunRadius * 2))) -
+			(sunRadius * 2);
+
+		//some fancy parabola stuff, thanks shoemaker
+		float x = (sunXPos - (wallp->width / 2)) / (wallp->width / 2);
+		float sunYPos = ((sunA * pow(x, 2)) + (sunB * x) + sunC) + 1;
+
+		//correct for sun radius
+		sunXPos -= sunRadius;
+
+		sunShape.setPosition(sunXPos, sunYPos);
+
+		wallp->renderBuff->draw(sunShape);
+	}
+
+	//pretty much do the same exact thing for the moon
+	//convert sun<rise/set><min/hour> to total seconds
+	const long moonsetTimeInSec = (moonsetHour * MINUTES_IN_AN_HOUR *
+			SECONDS_IN_A_MINUTE) + (moonsetMinute * SECONDS_IN_A_MINUTE);
+	const long moonriseTimeInSec = (moonriseHour * MINUTES_IN_AN_HOUR *
+			SECONDS_IN_A_MINUTE) + (moonriseMinute * SECONDS_IN_A_MINUTE);
+
+	//get amount of time that moon will be out (in seconds)
+	const long moonTotalUpSec = moonsetTimeInSec + (dayTotalSec -
+		moonriseTimeInSec);
+
+	//if moon is currently up and should be rendered/calculated further
+	//must account for midnight (00:00)
+	const bool moonUpBeforeMidnight = (timeInSec > moonriseTimeInSec &&
+		timeInSec < HOURS_IN_A_DAY * MINUTES_IN_AN_HOUR * SECONDS_IN_A_MINUTE);
+	const bool moonUpAfterMidnight = (timeInSec < moonsetTimeInSec &&
+			timeInSec > 0);
+	
+	if(moonUpBeforeMidnight || moonUpAfterMidnight){
+		//how far the moon is in its path (similar to "DayProgress")
+		//0 moonrise
+		//0.5 noon
+		//1 moonset
+		//its calculated using the moon set/rise time and before after midnight
+		double moonProgress;
+
+		if(moonUpBeforeMidnight){
+			//std::cout << "yep" << std::endl;
+			//moon progress before midnight.
+			//0 = center of skype
+			//<moonrisetime> = about to rise
+			moonProgress = (float)(timeInSec - moonriseTimeInSec) /
+				(float)moonTotalUpSec;
+		}else{
+			//moon progress before midnight.
+			//0 = center of sky
+			//<moonsettime> = moon should have set by now
+			moonProgress = ((float)timeInSec / (float)moonTotalUpSec) +
+				((float)(dayTotalSec - moonriseTimeInSec) /
+				(float)moonTotalUpSec);
+		}
+
+		//same thing as sun
+		float moonXPos = (moonProgress * (wallp->width + (sunRadius * 2))) -
+			(sunRadius * 2);
+
+		float x = (moonXPos - (wallp->width / 2)) / (wallp->width / 2);
+		float moonYPos = ((sunA * pow(x, 2)) + (sunB * x) + sunC) + 1;
+
+		//yep
+		moonXPos -= sunRadius;
+
+		moonShape.setPosition(moonXPos, moonYPos);
+
+		wallp->renderBuff->draw(moonShape);
 	}
 
 	//print status message
-	if(tm_struct->tm_min == 0){
+	if(tm_struct->tm_min == 0 && verbosity == 2){
 		std::cout << "time: " <<  tm_struct->tm_hour << ':'
 			<< tm_struct->tm_min << ':' << tm_struct->tm_sec
 			<< " prog: " << DayProgress * 100
 			<< '%' << std::endl;
 	}
-
-	//x pos will correspond to dayprogress with min being -diameter(radius*2)
-	//and max being the screen width
-	float sunXPos = (SunProgress * (wallp->width + (sunRadius * 2))) -
-		(sunRadius * 2);
-
-	//some fancy parabola stuff, thanks shoemaker
-	float x = (sunXPos - (wallp->width / 2)) / (wallp->width / 2);
-	float sunYPos = ((sunA * pow(x, 2)) + (sunB * x) + sunC) + 1;
-
-	//correct for sun radius
-	sunXPos -= sunRadius;
-
-	sunShape.setPosition(sunXPos, sunYPos);
-
-	wallp->renderBuff->clear(sf::Color(115, 224, 255));
-	wallp->renderBuff->draw(sunShape);
-
-	//TODO: some render stuff not sure why its here
-	//renderedWaterTexture = drawWater(renderedWaterTexture);
-	//renderedGrassTexture = drawGrass(renderedGrassTexture);
-	//renderedCloudTextureDay = drawClouds(renderedCloudTextureDay, true, cloudProg);
-	//renderedCloudTextureNight = drawClouds(renderedCloudTextureNight, false, cloudProg);
 
 	wallp->renderBuff->draw(renderedWaterSprite);
 	wallp->renderBuff->draw(renderedGrassSprite);
@@ -261,7 +338,10 @@ int initGrass(void){
 	//load textures
 	for(int i = 0; i < NUM_GRASS_TEXTURES; i++){
 		std::string textureName = "grass" + std::to_string(i) + ".png";
-		if (!grassTextures[i].loadFromFile(textureName)){
+		if(verbosity){
+			std::cout << "loading file: " << textureName << std::endl;
+		}
+		if(!grassTextures[i].loadFromFile(textureName) && verbosity){
 			std::cout << "couldn't load texture: \"" << textureName
 				<< '"' << std::endl;
 			return 1;
@@ -295,7 +375,10 @@ int initWater(void){
 	//load textures
 	for(int i = 0; i < NUM_WATER_TEXTURES; i++){
 		std::string textureName = "water" + std::to_string(i) + ".png";
-		if (!waterTextures[i].loadFromFile(textureName)){
+		if(verbosity){
+			std::cout << "loading file: " << textureName << std::endl;
+		}
+		if(!waterTextures[i].loadFromFile(textureName) && verbosity){
 			std::cout << "couldn't load texture: \""
 				<< textureName << '"' << std::endl;
 			return 1;
@@ -328,7 +411,10 @@ int initClouds(void){
 	sf::Texture * cloudTextures = new sf::Texture[NUM_CLOUD_TEXTURES];
 	for(int i = 0; i < NUM_CLOUD_TEXTURES; i++){
 		std::string textureName = "cloud" + std::to_string(i) + ".png";
-		if (!cloudTextures[i].loadFromFile(textureName)){
+		if(verbosity){
+			std::cout << "loading file: " << textureName << std::endl;
+		}
+		if(!cloudTextures[i].loadFromFile(textureName) && verbosity){
 			std::cout << "couldn't load texture: \""
 				<< textureName << '"' << std::endl;
 			return 1;
@@ -422,24 +508,25 @@ sf::RenderTexture* drawWater(sf::RenderTexture *texture){
 sf::RenderTexture* drawClouds(sf::RenderTexture *texture, bool isDay,
 		int cloudSeed){
 	srand(cloudSeed);
-	//texture->clear(sf::Color(0, 0, 0, 0));
+	texture->clear(sf::Color(0, 0, 0, 0));
 
 	int cloudCount;
 	if(isDay){
-		texture->clear(sf::Color(255, 255, 255, 10));
 		cloudCount = cloudCountDay;
 	}else{
-		texture->clear(sf::Color(0, 0, 0, 10));
 		cloudCount = cloudCountNight;
 	}
 
 	for(int i = 0; i < cloudCount; i++){
 		int randSprite = rand() % NUM_CLOUD_TEXTURES;
-		cloudSprites[randSprite].setPosition(rand() %
-			(wallp->width - (cloudSprites[rand() %
-			NUM_CLOUD_TEXTURES].getTexture()->getSize().x *
-			cloudScale)), (rand() % ((wallp->height - waterOffset) / 5)) +
-			100);
+		//cloudSprites[randSprite].setPosition(rand() %
+			//(wallp->width - (cloudSprites[rand() %
+			//NUM_CLOUD_TEXTURES].getTexture()->getSize().x * cloudScale)),
+			//(rand() % ((wallp->height - waterOffset) / 5)) + 100);
+
+		cloudSprites[randSprite].setPosition(rand() % (wallp->width -
+			cloudSprites[randSprite].getTexture()->getSize().x * cloudScale),
+			(rand() % ((wallp->height - waterOffset) / 5)) + 100);
 
 		texture->draw(cloudSprites[randSprite]);
 	}
