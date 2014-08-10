@@ -7,12 +7,16 @@
 #include "../../Wallpaper.h"
 #include "images.h"
 
+//TODO: textures in header file
+
 //textures all saved with <type><num>.png names
 //ex: grass0.png would be the first grass texture
 //the max number of each is listed here
 #define NUM_GRASS_TEXTURES 2
 #define NUM_CLOUD_TEXTURES 5
 #define NUM_WATER_TEXTURES 1
+#define NUM_DITHER_TEXTURES 4
+#define NUM_GRADIENT_TEXTURES 1
 
 //time stuff
 #define HOURS_IN_A_DAY 24
@@ -38,8 +42,9 @@ long seed;
 //distance from bottom of screen that grass will be draw at
 int grassOffset;
 
-//scale of each sprite. 1 means each texture pixel is one pixel on screen
-int grassScale, waterScale, cloudScale;
+//scale of each sprite from 1:<num> res
+//with 1 being each texture pixel is one on screen pixel
+int grassScale, waterScale, cloudScale, gradientDitherScale;
 int waterOffset;
 
 //how many clouds to generate depending on time of day
@@ -70,6 +75,7 @@ int moonriseMinute;
 sf::Sprite *grassSegmentSprites;
 sf::Sprite *cloudSprites;
 sf::Sprite *waterSegmentSprites;
+sf::Sprite *gradientDitherSprites;
 
 //the segment sprites are rendered to these sprites
 //each "rendered" sprite will likely have multiple "segment"
@@ -88,6 +94,15 @@ sf::RenderTexture *renderedCloudTextureDay;
 sf::Sprite renderedCloudSpriteNight;
 sf::RenderTexture *renderedCloudTextureNight;
 
+//for skype gradient and stuff
+sf::Sprite renderedBackgroundGradientSprite;
+sf::RenderTexture *renderedBackgroundGradientTexture;
+
+//temp sun/moon stuff
+//TODO: get rid of this
+sf::CircleShape sunShape(sunRadius);
+sf::CircleShape moonShape(sunRadius);
+
 //these are all the functions that are called by the wallpaper
 extern "C" int init(Wallpaper *);
 extern "C" int redraw(void);
@@ -96,6 +111,7 @@ extern "C" int deinit(void);
 //renders sprites to a given texture
 sf::RenderTexture* drawGrass(sf::RenderTexture *);
 sf::RenderTexture* drawWater(sf::RenderTexture *);
+sf::RenderTexture* drawBackgroundGradient(sf::RenderTexture *);
 
 //same as other draw functions except it takes bool isDay and int seed
 //isDay: whether to draw using "cloudCoundDay" or "cloudCoundNight"
@@ -108,6 +124,7 @@ sf::RenderTexture* drawClouds(sf::RenderTexture *, bool isDay,
 int initGrass(void);
 int initWater(void);
 int initClouds(void);
+int initGradient(void);
 
 extern "C" int init(Wallpaper * set){
 	set->refresh = 0.01; //once every second
@@ -117,6 +134,7 @@ extern "C" int init(Wallpaper * set){
 	grassScale = 3;
 	waterScale = 3;
 	cloudScale = 3;
+	gradientDitherScale = 3;
 	sunRadius = 25;
 	grassOffset = 140;
 	waterOffset = 195;
@@ -150,7 +168,10 @@ extern "C" int init(Wallpaper * set){
 	//load/create all the sprites and stuff
 	//if one of them has an error then everything
 	//is aborted
-	if(initGrass() || initClouds() || initWater()){
+	if(initGrass() ||
+			initClouds() ||
+			initWater() ||
+			initGradient()){
 		return 1;
 	}
 
@@ -173,9 +194,6 @@ extern "C" int deinit(void){
 }
 
 extern "C" int redraw(void){
-	sf::CircleShape sunShape(sunRadius);
-	sf::CircleShape moonShape(sunRadius);
-
 	sunShape.setFillColor(sf::Color::Yellow);
 	moonShape.setFillColor(sf::Color::Blue);
 
@@ -208,6 +226,8 @@ extern "C" int redraw(void){
 	const bool sunUp = timeInSec > sunriseTimeInSec && timeInSec < sunsetTimeInSec;
 
 	wallp->renderBuff->clear(sf::Color(115, 224, 255));
+
+	wallp->renderBuff->draw(renderedBackgroundGradientSprite);
 
 	//only draw/calculate sun if it's up
 	if(sunUp){
@@ -446,6 +466,37 @@ int initClouds(void){
 	return 0;
 }
 
+int initGradient(void){
+	//yep this again
+	sf::Texture * ditherTextures = new sf::Texture[NUM_DITHER_TEXTURES];
+	gradientDitherSprites = new sf::Sprite[NUM_DITHER_TEXTURES];
+	for(int i = 0; i < NUM_DITHER_TEXTURES; i++){
+		std::string textureName = "dither" + std::to_string(i) + ".png";
+		if(verbosity){
+			std::cout << "loading file: " << textureName << std::endl;
+		}
+		if(!ditherTextures[i].loadFromFile(textureName) && verbosity){
+			std::cout << "couldn't load texture: \""
+				<< textureName << '"' << std::endl;
+			return 1;
+		}
+
+		gradientDitherSprites[i].setTexture(ditherTextures[i]);
+		gradientDitherSprites[i].scale(gradientDitherScale, gradientDitherScale);
+	}
+
+	//texture time?
+	renderedBackgroundGradientTexture = new sf::RenderTexture();
+	renderedBackgroundGradientTexture->create(wallp->width, wallp->height);
+
+	renderedBackgroundGradientSprite.setTexture(
+			renderedBackgroundGradientTexture->getTexture());
+	renderedBackgroundGradientTexture = drawBackgroundGradient(
+			renderedBackgroundGradientTexture);
+
+	return 0;
+}
+
 sf::RenderTexture* drawGrass(sf::RenderTexture *texture){
 	//draw a rectangle behind the grass from bottom of screen to grass middle
 	sf::RectangleShape grassRect(sf::Vector2f(wallp->width,
@@ -532,6 +583,24 @@ sf::RenderTexture* drawClouds(sf::RenderTexture *texture, bool isDay,
 	}
 
 	texture->display();
+	return texture;
+}
+
+sf::RenderTexture* drawBackgroundGradient(sf::RenderTexture *texture){
+	for(int curDither = NUM_DITHER_TEXTURES - 1; curDither >= 0; curDither--){
+		int distAcrossStage = 0;
+		while(distAcrossStage < wallp->width){
+			gradientDitherSprites[curDither].setPosition(distAcrossStage,
+				wallp->height - ((curDither * 40) + waterOffset + 10));
+			texture->draw(gradientDitherSprites[curDither]);
+		
+			distAcrossStage += gradientDitherScale *
+				gradientDitherSprites[curDither].getTexture()->getSize().x;
+		}
+	}
+
+	texture->display();
+
 	return texture;
 }
 //TODO: fuck
