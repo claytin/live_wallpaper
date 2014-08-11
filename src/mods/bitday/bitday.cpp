@@ -47,6 +47,14 @@ int grassOffset;
 int grassScale, waterScale, cloudScale, gradientDitherScale;
 int waterOffset;
 
+//distance from top of water to clouds
+int cloudOffset;
+
+//dither offset from water
+int ditherOffset;
+//space between dither seps
+int ditherSpacing;
+
 //how many clouds to generate depending on time of day
 //day and night have their own cloud buffers
 //this is the number of clouds that will be rendered to each buffer
@@ -100,8 +108,6 @@ sf::RenderTexture *renderedBackgroundGradientTexture;
 
 //temp sun/moon stuff
 //TODO: get rid of this
-sf::CircleShape sunShape(sunRadius);
-sf::CircleShape moonShape(sunRadius);
 
 //these are all the functions that are called by the wallpaper
 extern "C" int init(Wallpaper *);
@@ -138,6 +144,7 @@ extern "C" int init(Wallpaper * set){
 	sunRadius = 25;
 	grassOffset = 140;
 	waterOffset = 195;
+	cloudOffset = 250;
 	cloudCountNight = 20;
 	cloudCountDay = 5;
 	sunA = 400;
@@ -150,6 +157,10 @@ extern "C" int init(Wallpaper * set){
 	sunriseMinute = 20;
 	sunsetHour = 20;
 	sunsetMinute = 0;
+
+	//dither settings
+	ditherSpacing = 50;
+	ditherOffset = ditherSpacing;
 
 	//default moon times
 	//rise = 5:30, set = 6:00
@@ -194,6 +205,8 @@ extern "C" int deinit(void){
 }
 
 extern "C" int redraw(void){
+	sf::CircleShape sunShape(sunRadius);
+	sf::CircleShape moonShape(sunRadius);
 	sunShape.setFillColor(sf::Color::Yellow);
 	moonShape.setFillColor(sf::Color::Blue);
 
@@ -227,7 +240,7 @@ extern "C" int redraw(void){
 
 	wallp->renderBuff->clear(sf::Color(115, 224, 255));
 
-	wallp->renderBuff->draw(renderedBackgroundGradientSprite);
+	//wallp->renderBuff->draw(renderedBackgroundGradientSprite);
 
 	//only draw/calculate sun if it's up
 	if(sunUp){
@@ -577,7 +590,8 @@ sf::RenderTexture* drawClouds(sf::RenderTexture *texture, bool isDay,
 
 		cloudSprites[randSprite].setPosition(rand() % (wallp->width -
 			cloudSprites[randSprite].getTexture()->getSize().x * cloudScale),
-			(rand() % ((wallp->height - waterOffset) / 5)) + 100);
+			(rand() % ((wallp->height - waterOffset) / 5)) + (wallp->height -
+			(waterOffset + cloudOffset)));
 
 		texture->draw(cloudSprites[randSprite]);
 	}
@@ -587,11 +601,27 @@ sf::RenderTexture* drawClouds(sf::RenderTexture *texture, bool isDay,
 }
 
 sf::RenderTexture* drawBackgroundGradient(sf::RenderTexture *texture){
+	sf::Color ditherColors[] = {
+		sf::Color(183, 241, 255),
+		sf::Color(170, 237, 255),
+		sf::Color(150, 233, 255),
+		sf::Color(130, 229, 255)
+	};
 	for(int curDither = NUM_DITHER_TEXTURES - 1; curDither >= 0; curDither--){
+		//coloring behind dither
+		sf::RectangleShape ditherBgRect(sf::Vector2f(wallp->width, 200));
+
+		ditherBgRect.setPosition(0, wallp->height - (waterOffset +
+				(ditherSpacing * curDither) + ditherOffset));
+		ditherBgRect.setFillColor(ditherColors[curDither]);
+		texture->draw(ditherBgRect);
+
 		int distAcrossStage = 0;
 		while(distAcrossStage < wallp->width){
 			gradientDitherSprites[curDither].setPosition(distAcrossStage,
-				wallp->height - ((curDither * 40) + waterOffset + 10));
+				wallp->height - (waterOffset + (ditherSpacing * curDither) +
+				ditherOffset));
+
 			texture->draw(gradientDitherSprites[curDither]);
 		
 			distAcrossStage += gradientDitherScale *
