@@ -136,17 +136,23 @@ extern "C" int init(Wallpaper * set){
 	set->refresh = 0.01; //once every second
 	wallp = set;
 
-	//default scene settings
+	//scale stuff
 	grassScale = 3;
 	waterScale = 3;
 	cloudScale = 3;
 	gradientDitherScale = 3;
-	sunRadius = 25;
-	grassOffset = 140;
-	waterOffset = 195;
-	cloudOffset = 250;
+	
+	//offsets
+	grassOffset = 50 * grassScale;
+	waterOffset = 65 * waterScale;
+	cloudOffset = 83 * cloudScale;
+
+	//cloud stuff
 	cloudCountNight = 20;
 	cloudCountDay = 5;
+
+	//sun settings
+	sunRadius = 25;
 	sunA = 400;
 	sunB = 0;
 	sunC = sunRadius; //one radius from the top
@@ -159,7 +165,7 @@ extern "C" int init(Wallpaper * set){
 	sunsetMinute = 0;
 
 	//dither settings
-	ditherSpacing = 50;
+	ditherSpacing = 15 * gradientDitherScale;
 	ditherOffset = ditherSpacing;
 
 	//default moon times
@@ -240,7 +246,7 @@ extern "C" int redraw(void){
 
 	wallp->renderBuff->clear(sf::Color(115, 224, 255));
 
-	//wallp->renderBuff->draw(renderedBackgroundGradientSprite);
+	wallp->renderBuff->draw(renderedBackgroundGradientSprite);
 
 	//only draw/calculate sun if it's up
 	if(sunUp){
