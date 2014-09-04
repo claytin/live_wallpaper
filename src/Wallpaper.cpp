@@ -4,8 +4,13 @@
 
 #include "Wallpaper.h"
 
-int main(){
-	void * wallpaper_program = dlopen("./mods/bitday.so", RTLD_NOW);
+int main(int argc, char **argv){
+	if(argc < 2){
+		std::cout << "gotta include a wallpaper" << std::endl;
+		return 1;
+	}
+	
+	void * wallpaper_program = dlopen(argv[1], RTLD_NOW);
 
 	char * error;
 	if((error = dlerror()) != NULL){
@@ -47,6 +52,16 @@ int main(){
 	while(true){
 		(*redraw)();
 
+		sf::Event event;
+		while (window.pollEvent(event)){
+			if(event.type == sf::Event::Resized){
+				wallset.width = window.getSize().x;
+				wallset.height = window.getSize().y;
+
+				//now that all the settings have been resolved. itt is time
+				//buff.create(wallset.width, wallset.height);
+			}
+		}
 		//draw it to the window
 		sf::Sprite sprite(wallset.renderBuff->getTexture());
 		
