@@ -8,11 +8,6 @@
 
 //TODO: textures in header file
 
-//time stuff
-#define HOURS_IN_A_DAY 24
-#define MINUTES_IN_AN_HOUR 60
-#define SECONDS_IN_A_MINUTE 60
-
 //all information about the wallpaper needed while drawing
 Wallpaper *wallp;
 
@@ -20,17 +15,24 @@ Wallpaper *wallp;
 //with random values will be consistent
 long seed;
 
+//amount panned left or right
+//0 - no pan
+//> 0 - pan to right
+//< 0 - pan to left
+int panDist;
 
 //holds the sprites that have been directly loaded from the texture files
-sf::Sprite *mountainSegmentSprite;
+sf::Sprite mountainSegmentSprite;
+sf::Sprite treeSegmentSprite;
+sf::Sprite islandSprite;
 sf::Sprite *cloudSprites;
-sf::Sprite *treeSegmentSprites;
 
 //the segment sprites are rendered to these sprites
 //each "rendered" sprite will likely have multiple "segment"
 //sprites rendered to it
 sf::Sprite renderedMountainSprite;
 sf::RenderTexture *renderedMountainTexture;
+
 sf::Sprite renderedTreeSprite;
 sf::RenderTexture *renderedTreeTexture;
 
@@ -38,20 +40,24 @@ sf::RenderTexture *renderedTreeTexture;
 extern "C" int init(Wallpaper *);
 extern "C" int redraw(void);
 extern "C" int deinit(void);
+extern "C" int pan(int dist);
 
 //renders sprites to a given texture
 sf::RenderTexture* drawMountains(sf::RenderTexture *);
 sf::RenderTexture* drawTrees(sf::RenderTexture *);
-sf::RenderTexture* drawClouds(sf::RenderTexture *);
 
 //loads textures and creates sprites/rendertextures needed for each object
 int initMountains(void);
 int initTrees(void);
+int initIsland(void);
 int initClouds(void);
 
 extern "C" int init(Wallpaper * set){
 	set->refresh = 0.01; //once every second
 	wallp = set;
+
+	//start with no pan
+	panDist = 0;
 
 	//setup stuff
 	seed = time(NULL);
@@ -59,7 +65,10 @@ extern "C" int init(Wallpaper * set){
 	//load/create all the sprites and stuff
 	//if one of them has an error then everything
 	//is aborted
-	if(initTrees() || initMountains()){
+	if(initTrees()
+		|| initMountains()
+		|| initClouds()
+		|| initIsland()){
 		return 1;
 	}
 
@@ -78,7 +87,43 @@ extern "C" int redraw(void){
 	wallp->renderBuff->draw(renderedMountainSprite);
 	wallp->renderBuff->draw(renderedTreeSprite);
 
+	islandSprite.setPosition(wallp->width / 4, wallp->height / 2);
+	wallp->renderBuff->draw(islandSprite);
+
+	cloudSprites[0].setPosition(wallp->width / 5, wallp->height / 1.6);
+	wallp->renderBuff->draw(cloudSprites[0]);
+
+	cloudSprites[1].setPosition(wallp->width / 1.2, wallp->height / 2);
+	wallp->renderBuff->draw(cloudSprites[1]);
+
+	cloudSprites[1].setPosition(wallp->width / 10, wallp->height / 1.4);
+	wallp->renderBuff->draw(cloudSprites[1]);
+
+	cloudSprites[2].setPosition(wallp->width / 2, wallp->height / 2);
+	wallp->renderBuff->draw(cloudSprites[2]);
+
+	cloudSprites[2].setPosition((wallp->width / 20) - 300, wallp->height / 2.5);
+	wallp->renderBuff->draw(cloudSprites[2]);
+
 	wallp->renderBuff->display();
+
+	return 0;
+}
+
+extern "C" int pan(int _dist){
+	panDist += _dist;
+
+	return 0;
+}
+
+int initIsland(void){
+	sf::Texture *islandTexture = new sf::Texture;
+	islandTexture->loadFromFile("island.png");
+
+	//crate sprite for each fragment
+	//mountainSegmentSprite = new sf::Sprite;
+	islandSprite.setTexture(*islandTexture);
+	islandSprite.setScale(2, 2);
 
 	return 0;
 }
@@ -89,9 +134,9 @@ int initMountains(void){
 	MountainTexture->loadFromFile("mountains.png");
 
 	//crate sprite for each fragment
-	mountainSegmentSprite = new sf::Sprite;
-	mountainSegmentSprite->setTexture(*MountainTexture);
-	mountainSegmentSprite->setScale(2, 2);
+	//mountainSegmentSprite = new sf::Sprite;
+	mountainSegmentSprite.setTexture(*MountainTexture);
+	mountainSegmentSprite.setScale(2, 2);
 
 	//create texture and sprite to hold rendered fragments
 	renderedMountainTexture = new sf::RenderTexture();
@@ -105,17 +150,38 @@ int initMountains(void){
 	return 0;
 }
 
+int initClouds(void){
+	sf::Texture *cloudTextures = new sf::Texture[3];
+	cloudTextures[0].loadFromFile("cloud0.png");
+	cloudTextures[1].loadFromFile("cloud1.png");
+	cloudTextures[2].loadFromFile("cloud2.png");
+
+	//crate sprite for each fragment
+	cloudSprites = new sf::Sprite[3];
+
+	cloudSprites[0].setTexture(cloudTextures[0]);
+	cloudSprites[0].setScale(2, 2);
+
+	cloudSprites[1].setTexture(cloudTextures[1]);
+	cloudSprites[1].setScale(2, 2);
+
+	cloudSprites[2].setTexture(cloudTextures[2]);
+	cloudSprites[2].setScale(2, 2);
+
+	return 0;
+}
+
 sf::RenderTexture* drawMountains(sf::RenderTexture *texture){
 	//while there is screen space left keep drawing a random piece of grass
 	int i = 0;
-	while((mountainSegmentSprite->getTexture()->getSize().x *
-			mountainSegmentSprite->getScale().x) * i < wallp->width){
+	while((mountainSegmentSprite.getTexture()->getSize().x *
+			mountainSegmentSprite.getScale().x) * i < wallp->width){
 
-		float x = mountainSegmentSprite->getTexture()->getSize().x * 2 * i;
+		float x = mountainSegmentSprite.getTexture()->getSize().x * 2 * i;
 
-		mountainSegmentSprite->setPosition(x, wallp->height -
-			(mountainSegmentSprite->getTexture()->getSize().y * 2));
-		texture->draw(*mountainSegmentSprite);
+		mountainSegmentSprite.setPosition(x, wallp->height -
+			(mountainSegmentSprite.getTexture()->getSize().y * 2));
+		texture->draw(mountainSegmentSprite);
 		i++;
 	}
 
@@ -130,9 +196,8 @@ int initTrees(void){
 	TreeTexture->loadFromFile("trees.png");
 
 	//crate sprite for each fragment
-	mountainSegmentSprite = new sf::Sprite;
-	mountainSegmentSprite->setTexture(*TreeTexture);
-	mountainSegmentSprite->setScale(2, 2);
+	treeSegmentSprite.setTexture(*TreeTexture);
+	treeSegmentSprite.setScale(2, 2);
 
 	//create texture and sprite to hold rendered fragments
 	renderedTreeTexture = new sf::RenderTexture();
@@ -149,14 +214,14 @@ int initTrees(void){
 sf::RenderTexture* drawTrees(sf::RenderTexture *texture){
 	//while there is screen space left keep drawing a random piece of grass
 	int i = 0;
-	while((mountainSegmentSprite->getTexture()->getSize().x *
-			mountainSegmentSprite->getScale().x) * i < wallp->width){
+	while((treeSegmentSprite.getTexture()->getSize().x *
+			treeSegmentSprite.getScale().x) * i < wallp->width){
 
-		float x = mountainSegmentSprite->getTexture()->getSize().x * 2 * i;
+		float x = treeSegmentSprite.getTexture()->getSize().x * 2 * i;
 
-		mountainSegmentSprite->setPosition(x, wallp->height -
-			(mountainSegmentSprite->getTexture()->getSize().y * 2));
-		texture->draw(*mountainSegmentSprite);
+		treeSegmentSprite.setPosition(x, wallp->height -
+			(treeSegmentSprite.getTexture()->getSize().y * 2));
+		texture->draw(treeSegmentSprite);
 		i++;
 	}
 

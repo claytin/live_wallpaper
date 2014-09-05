@@ -20,9 +20,12 @@ int main(int argc, char **argv){
 
 	int (*redraw)();
 	int (*init)(Wallpaper*);
+	int (*pan)(int);
 
 	redraw = (int (*)())dlsym(wallpaper_program, "redraw");
 	init = (int (*)(Wallpaper*))dlsym(wallpaper_program, "init");
+	pan = (int (*)(int))dlsym(wallpaper_program, "pan");
+
 	if((error = dlerror()) != NULL){
 		std::cout << "DL Error: " << error << std::endl;
 		return 1;
@@ -52,16 +55,7 @@ int main(int argc, char **argv){
 	while(true){
 		(*redraw)();
 
-		sf::Event event;
-		while (window.pollEvent(event)){
-			if(event.type == sf::Event::Resized){
-				wallset.width = window.getSize().x;
-				wallset.height = window.getSize().y;
-
-				//now that all the settings have been resolved. itt is time
-				//buff.create(wallset.width, wallset.height);
-			}
-		}
+		(*pan)(1);
 		//draw it to the window
 		sf::Sprite sprite(wallset.renderBuff->getTexture());
 		
