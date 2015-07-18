@@ -1,26 +1,22 @@
 #compilers to use
-CC = g++
+CC = clang
 
 #dirs
 SRCDIR=../src/
 MODDIR=../src/mods/
 
-#find all objects... this is ass
-SRCS = $(patsubst $(SRCDIR)%.cpp,%.cpp,$(wildcard $(SRCDIR)*.cpp))
-OBJS = $(patsubst %.cpp,%.o,$(SRCS))
-
 #comp flags
 TARGET = walp
-CFLAGS = -g -Wall
-LIBS = -lsfml-graphics -lsfml-window -lsfml-system -ldl
+CFLAGS = -g -Wall -Weverything -D_REENTRANT -I/usr/include/SDL2 --system-header-prefix=SDL
+LIBS = -ldl -lSDL2 -lpthread
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
+$(TARGET): Wallpaper.o
 	$(CC) $(LIBS) $(CFLAGS) -o $(TARGET) $^
 
-%.o: $(SRCDIR)%.cpp
-	    $(CC) $(CFLAGS) -c $<
+%.o: $(SRCDIR)%.c
+	$(CC) $(CFLAGS) -c $<
 
 clean:
 	rm -rf *.o
