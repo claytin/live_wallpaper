@@ -60,27 +60,9 @@ int main(int argc, char **argv){
 		return 1;
 	}
 
-	/*sf::RenderTexture buff;*/
-
-	/*//defaults and stuff*/
-	/*Wallpaper wallset = {*/
-		/*640 * 2,*/
-		/*480,*/
-		/*60,*/
-		/*&buff*/
-	/*};*/
-
-	/*if((*init)(&wallset)){*/
-		/*return 1;*/
-	/*}*/
-
-	/*//now that all the settings have been resolved. itt is time*/
-	/*buff.create(wallset.width, wallset.height);*/
-
 	/*sf::RenderWindow window(sf::VideoMode(wallset.width, wallset.height),*/
 		/*"SFML works!");*/
 
-	/*double workspace = 0;*/
 	/*while(true){*/
 		/*(*redraw)();*/
 
@@ -119,7 +101,9 @@ int start(void){
 		return 1;
 	}
 
-	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1,
+	SDL_Renderer *renderer = SDL_CreateRenderer(
+		window,
+		-1,
 		SDL_RENDERER_ACCELERATED);
 
 	if (renderer == NULL){
@@ -129,22 +113,24 @@ int start(void){
 		return 1;
 	}
 
-	SDL_Surface *bitmap = SDL_LoadBMP("./test.bmp");
-	SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, bitmap);
-	SDL_RenderClear(renderer);
-	SDL_RenderCopy(renderer, texture, NULL, NULL);
+	/*SDL_Surface *bitmap = SDL_LoadBMP("./test.bmp");*/
+	/*SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, bitmap);*/
 
-	SDL_RenderPresent(renderer);
-	SDL_Delay(10000);
+	if((*settings.wallpaper->init)(settings.wallpaper)){
+		return 1;
+	}
+
+	while(1){
+		(*settings.wallpaper->redraw)();
+	}
+
+	/*SDL_RenderClear(renderer);*/
+	/*SDL_RenderCopy(renderer, texture, NULL, NULL);*/
+
+	/*SDL_RenderPresent(renderer);*/
+	/*SDL_Delay(10000);*/
 
 	SDL_Quit();
-
-	settings.wallpaper->texture = SDL_CreateTexture(
-		renderer,
-		SDL_PIXELFORMAT_RGB24,
-		SDL_TEXTUREACCESS_STREAMING,
-		settings.wallpaper->width,
-		settings.wallpaper->height);
 
 	return 0;
 }
