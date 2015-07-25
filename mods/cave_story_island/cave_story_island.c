@@ -5,8 +5,6 @@
 //#include <string>
 
 
-//#define PAN_FRAMES 60
-
 ////TODO: textures in header file
 
 ////all information about the wallpaper needed while drawing
@@ -225,11 +223,17 @@
 
 	//return texture;
 //}
-//
+
+
+
 
 #include "Wallpaper.h"
 
 int init(Wallpaper* wallpaper){
+	return 0;
+}
+
+int destroy(void){
 	return 0;
 }
 

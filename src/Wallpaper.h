@@ -4,13 +4,18 @@
 
 struct Wallpaper{
 	int width, height;	//wallpaper size
-	double refresh;	//time between redraws in seconds
+	unsigned int refresh;	//time between redraws in milliseconds
 	SDL_Texture *texture;
 
 	void *program;
 	int (*redraw)();
 	int (*init)(struct Wallpaper*);
+	int (*destroy)(void);
 	int (*signal)(int, char*);
+};
+
+enum signals{
+	PAN
 };
 
 typedef struct Wallpaper Wallpaper;

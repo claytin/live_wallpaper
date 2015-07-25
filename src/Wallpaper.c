@@ -49,7 +49,7 @@ int main(int argc, char **argv){
 
 	settings.wallpaper->width = 100;
 	settings.wallpaper->height = 100;
-	settings.wallpaper->refresh = 60;
+	settings.wallpaper->refresh = 1000;
 
 	if(loadWallpaper(path, settings.wallpaper)){
 		printf("unable to load wallpaper %s\n", path);
@@ -59,27 +59,6 @@ int main(int argc, char **argv){
 	if(start()){
 		return 1;
 	}
-
-	/*sf::RenderWindow window(sf::VideoMode(wallset.width, wallset.height),*/
-		/*"SFML works!");*/
-
-	/*while(true){*/
-		/*(*redraw)();*/
-
-		/*workspace -= 1;*/
-		/*(*signal)(workspace);*/
-
-		/*//draw it to the window*/
-		/*sf::Sprite sprite(wallset.renderBuff->getTexture());*/
-
-		/*window.clear();*/
-		/*window.draw(sprite);*/
-		/*window.display();*/
-
-		/*sf::sleep(sf::milliseconds(1000 * wallset.refresh));*/
-	/*}*/
-
-	/*dlclose(wallpaper_program);*/
 
 	return 0;
 }
@@ -113,26 +92,27 @@ int start(void){
 		return 1;
 	}
 
-	/*SDL_Surface *bitmap = SDL_LoadBMP("./test.bmp");*/
-	/*SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, bitmap);*/
-
 	if((*settings.wallpaper->init)(settings.wallpaper)){
 		return 1;
 	}
 
+	SDL_Event event;
 	while(1){
 		(*settings.wallpaper->redraw)();
+
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, settings.wallpaper->texture, NULL, NULL);
+		SDL_RenderPresent(renderer);
+
+		while(SDL_PollEvent(&event) != 0){
+			if(event.type == SDL_QUIT){
+				SDL_Quit();
+				return 0;
+			}
+		}
+
+		SDL_Delay(settings.wallpaper->refresh);
 	}
-
-	/*SDL_RenderClear(renderer);*/
-	/*SDL_RenderCopy(renderer, texture, NULL, NULL);*/
-
-	/*SDL_RenderPresent(renderer);*/
-	/*SDL_Delay(10000);*/
-
-	SDL_Quit();
-
-	return 0;
 }
 
 int loadWallpaper(const char *path, Wallpaper *wallpaper){
@@ -146,6 +126,7 @@ int loadWallpaper(const char *path, Wallpaper *wallpaper){
 
 	wallpaper->redraw = (int (*)())dlsym(wallpaper_program, "redraw");
 	wallpaper->init = (int (*)(Wallpaper*))dlsym(wallpaper_program, "init");
+	wallpaper->destroy = (int (*)(void))dlsym(wallpaper_program, "destroy");
 	wallpaper->signal = (int (*)(int, char*))dlsym(wallpaper_program, "signal");
 
 	if((error = dlerror()) != 0){
