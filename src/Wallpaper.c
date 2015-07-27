@@ -67,9 +67,15 @@ int start(void){
 		return 1;
 	}
 
+	settings.wallpaper->width = 1366;
+	settings.wallpaper->height = 768;
+
 	SDL_Window *window = SDL_CreateWindow(
 		"wallpaper test window",
-		100, 100, 640, 480,
+		100,
+		100,
+		settings.wallpaper->width,
+		settings.wallpaper->height,
 		SDL_WINDOW_SHOWN);
 
 	if (window == NULL){
@@ -77,9 +83,6 @@ int start(void){
 		SDL_Quit();
 		return 1;
 	}
-
-	settings.wallpaper->width = 640;
-	settings.wallpaper->height = 480;
 
 	settings.wallpaper->surface = SDL_CreateRGBSurface(
 		0,

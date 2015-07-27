@@ -74,19 +74,19 @@ int redraw(void){
 	SDL_FillRect(this->surface, NULL, 0x104184);
 	drawMountains();
 	drawTrees();
-	drawIsland();
 	drawClouds();
+	drawIsland();
 	return 0;
 }
 
 int ltime(void *i){
-	return draws;
-	/*return time(i);*/
+	/*return draws * 10;*/
+	return time(i);
 }
 
 void drawClouds(void){
 	SDL_Rect cloudRect;
-	for(int i = 0; i < 10; i++){
+	for(int i = 0; i < 8; i++){
 		int cloudOffset = ltime(NULL);
 		SDL_GetClipRect(cloudTextures[i % 3], &cloudRect);
 
@@ -94,8 +94,8 @@ void drawClouds(void){
 			(i * (this->width / 5) + cloudOffset)
 				% (this->width + cloudRect.w)
 				- cloudRect.w,
-			(i * (this->height / 5))
-				% (int)(this->height * .5),
+			(i * (this->height / 50))
+				% (int)(this->height * .25) + (this->height - (this->height * .5)),
 			0, 0
 		};
 
@@ -111,10 +111,9 @@ void drawIsland(void){
 		((this->width - islandRect.w) * 0.6)
 			* ((sin(ltime(NULL) / (float)240) / 2) + 0.5)
 			+ ((this->width - islandRect.w) * 0.15),
-		((this->height  - islandRect.h) * 0.6)
+		((this->height  - islandRect.h) * 0.2)
 			* ((sin(ltime(NULL) / (float)200) / 2) + 0.5)
-			+ ((this->height - islandRect.h) * 0.15)
-			+ (sin(ltime(NULL) / (float)20) * 20),
+			+ ((this->height - islandRect.h) * 0.5),
 		0, 0};
 
 	SDL_BlitSurface(islandTexture, NULL, this->surface, &destRect);
