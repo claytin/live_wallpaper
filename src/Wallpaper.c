@@ -19,19 +19,42 @@ int main(int argc, char **argv){
 	const struct option longOptions[] = {
 		{"help",	no_argument,		0,	'h'},
 		{"path",	required_argument,	0,	'p'},
+		{"width",	required_argument,	0,	'x'},
+		{"height",	required_argument,	0,	'y'},
+		{"window",	no_argument,		0,	'w'},
+		{"root",	no_argument,		0,	'r'},
+		{"file",	required_argument,	0,	'f'},
 		{0, 0, 0, 0}	//thanks c/gnu
 	};
 
 	char *path = NULL;
+	int width = 0, height = 0, output = 0;
+	char *outfile = NULL;
 
 	int nextOption;
-	while((nextOption = getopt_long(argc, argv, "hp:", longOptions, 0)) != -1){
+	while((nextOption = getopt_long(argc, argv, "whp:x:y:", longOptions, 0)) != -1){
 		switch(nextOption){
 			case 'h':
 				printUsage(argv[0]);
 				return 0;
 			case 'p':
 				path = optarg;
+				break;
+			case 'x':
+				width = atoi(optarg);
+				break;
+			case 'y':
+				height = atoi(optarg);
+				break;
+			case 'w':
+				output = 0;
+				break;
+			case 'r':
+				output = 1;
+				break;
+			case 'f':
+				output = 2;
+				outfile = optarg;
 				break;
 			default:
 				printUsage(argv[0]);
@@ -46,6 +69,9 @@ int main(int argc, char **argv){
 	}
 
 	settings.wallpaper = (Wallpaper*)malloc(sizeof(Wallpaper));
+
+	settings.wallpaper->width = (width) ? width : 640;
+	settings.wallpaper->height = (height) ? height : 480;
 
 	settings.wallpaper->refresh = 1000;
 
@@ -67,9 +93,6 @@ int start(void){
 		return 1;
 	}
 
-	settings.wallpaper->width = 1366;
-	settings.wallpaper->height = 768;
-
 	SDL_Window *window = SDL_CreateWindow(
 		"wallpaper test window",
 		100,
@@ -84,12 +107,6 @@ int start(void){
 		return 1;
 	}
 
-	settings.wallpaper->surface = SDL_CreateRGBSurface(
-		0,
-		settings.wallpaper->width,
-		settings.wallpaper->height,
-		32, 0, 0, 0, 0);
-
 	SDL_Renderer *renderer = SDL_CreateRenderer(
 		window,
 		-1,
@@ -102,19 +119,31 @@ int start(void){
 		return 1;
 	}
 
+	/*settings.wallpaper->texture = SDL_CreateTexture(*/
+		/*renderer,*/
+		/*SDL_PIXELFORMAT_RGBA8888,*/
+		/*SDL_TEXTUREACCESS_TARGET,*/
+		/*settings.wallpaper->width,*/
+		/*settings.wallpaper->height);*/
+
+	/*SDL_SetRenderTarget(*/
+		/*renderer,*/
+		/*settings.wallpaper->texture);*/
+
+	settings.wallpaper->renderer = renderer;
+
 	if((*settings.wallpaper->init)(settings.wallpaper)){
 		return 1;
 	}
 
 	SDL_Event event;
 	while(1){
-		(*settings.wallpaper->redraw)();
 
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(
-			renderer,
-			SDL_CreateTextureFromSurface(renderer, settings.wallpaper->surface),
-			NULL, NULL);
+		(*settings.wallpaper->redraw)();
+		/*SDL_RenderCopy(*/
+			/*settings.wallpaper->renderer,*/
+			/*settings.wallpaper->texture, NULL, NULL);*/
 		SDL_RenderPresent(renderer);
 
 		while(SDL_PollEvent(&event) != 0){

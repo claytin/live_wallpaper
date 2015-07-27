@@ -5,7 +5,8 @@
 struct Wallpaper{
 	int width, height;	//wallpaper size
 	unsigned int refresh;	//time between redraws in milliseconds
-	SDL_Surface *surface;
+	//SDL_Texture *texture;
+	SDL_Renderer *renderer;
 
 	void *program;
 	int (*redraw)();

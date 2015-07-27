@@ -2,31 +2,16 @@
 #include <stdio.h>
 #include <time.h>
 #include <SDL.h>
+#include <SDL_image.h>
 
 #define SCALE_FACTOR 2
 
-Wallpaper *this;
+static Wallpaper *this;
 
-SDL_Surface* treeTexture = NULL;
-SDL_Surface* mountainTexture = NULL;
-SDL_Surface* islandTexture = NULL;
-SDL_Surface** cloudTextures = NULL;
-
-//sdl helper function
-SDL_Surface *scaleSurface(SDL_Surface *_sourceSurface, int _scale){
-	SDL_Rect sourceRect;
-	SDL_GetClipRect(_sourceSurface, &sourceRect);
-
-	SDL_Surface *scaledSurface = SDL_CreateRGBSurface(
-		0,
-		sourceRect.w * _scale,
-		sourceRect.h * _scale,
-		32, 0, 0, 0, 0);
-
-	SDL_BlitScaled(_sourceSurface, NULL, scaledSurface, NULL);
-
-	return scaledSurface;
-}
+SDL_Texture* treeTexture = NULL;
+SDL_Texture* mountainTexture = NULL;
+SDL_Texture* islandTexture = NULL;
+SDL_Texture** cloudTextures = NULL;
 
 //draw each of the elements in different functions
 void drawTrees(void);
@@ -36,25 +21,33 @@ void drawClouds(void);
 
 int init(Wallpaper* _wallpaper){
 	this = _wallpaper;
-	_wallpaper->refresh = 16;
-	/*_wallpaper->refresh = 1000;*/
+	/*_wallpaper->refresh = 16;*/
+	_wallpaper->refresh = 1000;
 
-	treeTexture = scaleSurface(SDL_LoadBMP("trees.bmp"), SCALE_FACTOR);
-	SDL_SetColorKey(treeTexture, SDL_TRUE, 0x000000);
+	int imgFlags = IMG_INIT_PNG;
+	if(!(IMG_Init(imgFlags) & imgFlags)){
+		printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
+		return 1;
+	}
 
-	mountainTexture = scaleSurface(SDL_LoadBMP("mountains.bmp"), SCALE_FACTOR);
-	SDL_SetColorKey(mountainTexture, SDL_TRUE, 0x000000);
+	treeTexture = SDL_CreateTextureFromSurface(
+		this->renderer, IMG_Load("trees.png"));
 
-	islandTexture = scaleSurface(SDL_LoadBMP("island.bmp"), SCALE_FACTOR);
-	SDL_SetColorKey(islandTexture, SDL_TRUE, 0x000000);
+	mountainTexture = SDL_CreateTextureFromSurface(
+		this->renderer, IMG_Load("mountains.png"));
+
+	islandTexture = SDL_CreateTextureFromSurface(
+		this->renderer, IMG_Load("island.png"));
 
 	cloudTextures = malloc(sizeof(SDL_Surface) * 3);
-	cloudTextures[0] = scaleSurface(SDL_LoadBMP("cloud0.bmp"), SCALE_FACTOR);
-	SDL_SetColorKey(cloudTextures[0], SDL_TRUE, 0x000000);
-	cloudTextures[1] = scaleSurface(SDL_LoadBMP("cloud1.bmp"), SCALE_FACTOR);
-	SDL_SetColorKey(cloudTextures[1], SDL_TRUE, 0x000000);
-	cloudTextures[2] = scaleSurface(SDL_LoadBMP("cloud2.bmp"), SCALE_FACTOR);
-	SDL_SetColorKey(cloudTextures[2], SDL_TRUE, 0x000000);
+	cloudTextures[0] = SDL_CreateTextureFromSurface(
+		this->renderer, IMG_Load("cloud0.png"));
+	cloudTextures[1] = SDL_CreateTextureFromSurface(
+		this->renderer, IMG_Load("cloud1.png"));
+	cloudTextures[2] = SDL_CreateTextureFromSurface(
+		this->renderer, IMG_Load("cloud2.png"));
+
+	SDL_SetRenderDrawColor(this->renderer, 16, 65, 132, 0);
 
 	return 0;
 }
@@ -71,7 +64,7 @@ int draws = 0;
 
 int redraw(void){
 	draws++;
-	SDL_FillRect(this->surface, NULL, 0x104184);
+	/*SDL_FillRect(this->surface, NULL, 0x104184);*/
 	drawMountains();
 	drawTrees();
 	drawClouds();
@@ -79,76 +72,88 @@ int redraw(void){
 	return 0;
 }
 
-int ltime(void *i){
-	/*return draws * 10;*/
-	return time(i);
-}
-
 void drawClouds(void){
-	SDL_Rect cloudRect;
+	int width, height;
 	for(int i = 0; i < 8; i++){
-		int cloudOffset = ltime(NULL);
-		SDL_GetClipRect(cloudTextures[i % 3], &cloudRect);
+		int cloudOffset = time(NULL);
+		/*SDL_GetClipRect(cloudTextures[i % 3], &cloudRect);*/
+		SDL_QueryTexture(cloudTextures[i % 3], NULL, NULL, &width, &height);
+		width *= SCALE_FACTOR;
+		height *= SCALE_FACTOR;
 
 		SDL_Rect destRect = {
 			(i * (this->width / 5) + cloudOffset)
-				% (this->width + cloudRect.w)
-				- cloudRect.w,
+				% (this->width + width)
+				- width,
 			(i * (this->height / 50))
-				% (int)(this->height * .25) + (this->height - (this->height * .5)),
-			0, 0
+				% (int)(this->height * .25)
+				+ (this->height - (this->height * .5)),
+			width, height
 		};
 
-		SDL_BlitSurface(cloudTextures[i % 3], NULL, this->surface, &destRect);
+		SDL_RenderCopy(this->renderer, cloudTextures[i % 3], NULL, &destRect);
 	}
 }
 
 void drawIsland(void){
-	SDL_Rect islandRect;
-	SDL_GetClipRect(islandTexture, &islandRect);
+	int width, height;
+	SDL_QueryTexture(islandTexture, NULL, NULL, &width, &height);
+	width *= SCALE_FACTOR;
+	height *= SCALE_FACTOR;
 
 	SDL_Rect destRect = {
-		((this->width - islandRect.w) * 0.6)
-			* ((sin(ltime(NULL) / (float)240) / 2) + 0.5)
-			+ ((this->width - islandRect.w) * 0.15),
-		((this->height  - islandRect.h) * 0.2)
-			* ((sin(ltime(NULL) / (float)200) / 2) + 0.5)
-			+ ((this->height - islandRect.h) * 0.5),
-		0, 0};
+		((this->width - width) * 0.6)
+			* ((sin(time(NULL) / (float)240) / 2) + 0.5)
+			+ ((this->width - width) * 0.15),
+		((this->height  - height) * 0.2)
+			* ((sin(time(NULL) / (float)200) / 2) + 0.5)
+			+ ((this->height - height) * 0.5),
+		width, height};
 
-	SDL_BlitSurface(islandTexture, NULL, this->surface, &destRect);
+	SDL_RenderCopy(this->renderer, islandTexture, NULL, &destRect);
 }
 
 void drawMountains(void){
 
-	SDL_Rect mountainRect;
-	SDL_GetClipRect(mountainTexture, &mountainRect);
+	int width, height;
+	SDL_QueryTexture(mountainTexture, NULL, NULL, &width, &height);
+	width *= SCALE_FACTOR;
+	height *= SCALE_FACTOR;
 
-	int mountainOffset = (ltime(NULL) / 10) % mountainRect.w;
+	int mountainOffset = (time(NULL) / 10) % width;
 
-	SDL_Rect destRect = {-mountainOffset, this->height - mountainRect.h, 0, 0};
+	SDL_Rect destRect = {
+		-mountainOffset,
+		this->height - height,
+		width,
+		height};
 	int i = 0;
 	while(destRect.x < this->width){
 		i++;
 		SDL_Rect tempRect = destRect;
-		SDL_BlitSurface(mountainTexture, NULL, this->surface, &tempRect);
-		destRect.x += mountainRect.w;
+		SDL_RenderCopy(this->renderer, mountainTexture, NULL, &tempRect);
+		destRect.x += width;
 	}
 }
 
 void drawTrees(void){
 
-	SDL_Rect treeRect;
-	SDL_GetClipRect(treeTexture, &treeRect);
+	int width, height;
+	SDL_QueryTexture(mountainTexture, NULL, NULL, &width, &height);
+	width *= SCALE_FACTOR;
+	/*height *= SCALE_FACTOR;*/
 
-	int treeOffset = (ltime(NULL) / 5) % treeRect.w;
+	int treeOffset = (time(NULL) / 5) % width;
 
-	SDL_Rect destRect = {-treeOffset, this->height - treeRect.h, 0, 0};
+	SDL_Rect destRect = {
+		-treeOffset,
+		this->height - height,
+		width,
+		height};
 	int i = 0;
 	while(destRect.x < this->width){
 		i++;
-		SDL_Rect tempRect = destRect;
-		SDL_BlitSurface(treeTexture, NULL, this->surface, &tempRect);
-		destRect.x += treeRect.w;
+		SDL_RenderCopy(this->renderer, treeTexture, NULL, &destRect);
+		destRect.x += width;
 	}
 }
