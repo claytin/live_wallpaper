@@ -47,8 +47,6 @@ int main(int argc, char **argv){
 
 	settings.wallpaper = (Wallpaper*)malloc(sizeof(Wallpaper));
 
-	settings.wallpaper->width = 100;
-	settings.wallpaper->height = 100;
 	settings.wallpaper->refresh = 1000;
 
 	if(loadWallpaper(path, settings.wallpaper)){
@@ -80,6 +78,15 @@ int start(void){
 		return 1;
 	}
 
+	settings.wallpaper->width = 640;
+	settings.wallpaper->height = 480;
+
+	settings.wallpaper->surface = SDL_CreateRGBSurface(
+		0,
+		settings.wallpaper->width,
+		settings.wallpaper->height,
+		32, 0, 0, 0, 0);
+
 	SDL_Renderer *renderer = SDL_CreateRenderer(
 		window,
 		-1,
@@ -101,7 +108,10 @@ int start(void){
 		(*settings.wallpaper->redraw)();
 
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, settings.wallpaper->texture, NULL, NULL);
+		SDL_RenderCopy(
+			renderer,
+			SDL_CreateTextureFromSurface(renderer, settings.wallpaper->surface),
+			NULL, NULL);
 		SDL_RenderPresent(renderer);
 
 		while(SDL_PollEvent(&event) != 0){

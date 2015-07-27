@@ -228,8 +228,19 @@
 
 
 #include "Wallpaper.h"
+#include <SDL.h>
+#include <stdio.h>
 
-int init(Wallpaper* wallpaper){
+Wallpaper *wallpaper;
+
+SDL_Surface* treeTexture = NULL;
+
+int init(Wallpaper* _wallpaper){
+	wallpaper = _wallpaper;
+	_wallpaper->refresh = 100;
+
+	treeTexture = SDL_LoadBMP("trees.bmp");
+
 	return 0;
 }
 
@@ -242,5 +253,7 @@ int signal(int cmd, char* data){
 }
 
 int redraw(void){
+	const SDL_Rect rect = {0, 0, 20, 20};
+	SDL_BlitSurface(treeTexture, &rect, wallpaper->surface, NULL);
 	return 0;
 }
