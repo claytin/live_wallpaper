@@ -8,7 +8,7 @@ MODDIR=../src/mods/
 #comp flags
 TARGET = walp
 CFLAGS = -g -Wall -Weverything -D_REENTRANT -I/usr/include/SDL2 --system-header-prefix=SDL
-LIBS = -ldl -lSDL2 -lpthread
+LIBS = -ldl -lSDL2 -lpthread -lSDL2_gfx
 
 all: $(TARGET)
 
