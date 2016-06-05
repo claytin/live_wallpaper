@@ -3,22 +3,29 @@
 #include <SDL.h>
 
 struct Wallpaper{
-	int width, height;	//wallpaper size
+	unsigned int width, height;	//wallpaper size
 	unsigned int refresh;	//time between redraws in milliseconds
-	//SDL_Texture *texture;
 	SDL_Renderer *renderer;
 
 	void *program;
 	int (*redraw)();
 	int (*init)(struct Wallpaper*);
 	int (*destroy)(void);
-	int (*signal)(int, char*);
 };
 
-enum signals{
-	PAN
+enum outputs{
+	NONE = 0,
+	WINDOW,
+	BACKGROUND,
+	IMAGE
 };
 
 typedef struct Wallpaper Wallpaper;
+
+static const unsigned int DEFAULT_WIDTH = 640;
+static const unsigned int DEFAULT_HEIGHT = 480;
+
+//by default refresh every second
+static const unsigned int DEFAULT_REFRESH_RATE = 1000;
 
 #endif

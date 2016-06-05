@@ -12,24 +12,30 @@ int start(void);
 
 static struct {
 	Wallpaper *wallpaper;
-}settings;
+	unsigned short output;
+	char *path;
+	char *output_file;
+	unsigned int width;
+	unsigned int height;
+} settings;
 
 int main(int argc, char **argv){
 
 	const struct option longOptions[] = {
-		{"help",	no_argument,		0,	'h'},
-		{"path",	required_argument,	0,	'p'},
-		{"width",	required_argument,	0,	'x'},
-		{"height",	required_argument,	0,	'y'},
-		{"window",	no_argument,		0,	'w'},
-		{"root",	no_argument,		0,	'r'},
-		{"file",	required_argument,	0,	'f'},
+		{"help",		no_argument,		0,	'h'},
+		{"path",		required_argument,	0,	'p'},
+		{"width",		required_argument,	0,	'x'},
+		{"height",		required_argument,	0,	'y'},
+		{"window",		no_argument,		0,	'w'},
+		{"background",	no_argument,		0,	'b'},
+		{"file",		required_argument,	0,	'f'},
 		{0, 0, 0, 0}	//thanks c/gnu
 	};
 
-	char *path = NULL;
-	int width = 0, height = 0, output = 0;
-	char *outfile = NULL;
+	settings.path = NULL;
+	settings.output_file = NULL;
+	settings.output = NONE;
+	settings.wallpaper = NULL;
 
 	int nextOption;
 	while((nextOption = getopt_long(argc, argv, "whp:x:y:", longOptions, 0)) != -1){
@@ -38,23 +44,23 @@ int main(int argc, char **argv){
 				printUsage(argv[0]);
 				return 0;
 			case 'p':
-				path = optarg;
+				settings.path = optarg;
 				break;
 			case 'x':
-				width = atoi(optarg);
+				settings.width = (unsigned int)atoi(optarg);
 				break;
 			case 'y':
-				height = atoi(optarg);
+				settings.height = (unsigned int)atoi(optarg);
 				break;
 			case 'w':
-				output = 0;
+				settings.output = WINDOW;
 				break;
-			case 'r':
-				output = 1;
+			case 'b':
+				settings.output = BACKGROUND;
 				break;
 			case 'f':
-				output = 2;
-				outfile = optarg;
+				settings.output = IMAGE;
+				settings.output_file = optarg;
 				break;
 			default:
 				printUsage(argv[0]);
@@ -62,21 +68,21 @@ int main(int argc, char **argv){
 		}
 	}
 
-	if(path == NULL){
-		printf("you must include a wallpaper path\n");
+	if(settings.path == NULL){
+		printf("you must at least specify a wallpaper path\n");
 		printUsage(argv[0]);
 		return 1;
 	}
 
 	settings.wallpaper = (Wallpaper*)malloc(sizeof(Wallpaper));
 
-	settings.wallpaper->width = (width) ? width : 640;
-	settings.wallpaper->height = (height) ? height : 480;
+	settings.wallpaper->width = (settings.width) ?  settings.width : DEFAULT_WIDTH;
+	settings.wallpaper->height = (settings.height) ?  settings.height : DEFAULT_HEIGHT;
 
-	settings.wallpaper->refresh = 1000;
+	settings.wallpaper->refresh = DEFAULT_REFRESH_RATE;
 
-	if(loadWallpaper(path, settings.wallpaper)){
-		printf("unable to load wallpaper %s\n", path);
+	if(loadWallpaper(settings.path, settings.wallpaper)){
+		printf("unable to load wallpaper %s\n", settings.path);
 		return 1;
 	}
 
@@ -97,8 +103,8 @@ int start(void){
 		"wallpaper test window",
 		100,
 		100,
-		settings.wallpaper->width,
-		settings.wallpaper->height,
+		(int)settings.wallpaper->width,
+		(int)settings.wallpaper->height,
 		SDL_WINDOW_SHOWN);
 
 	if (window == NULL){
@@ -119,17 +125,6 @@ int start(void){
 		return 1;
 	}
 
-	/*settings.wallpaper->texture = SDL_CreateTexture(*/
-		/*renderer,*/
-		/*SDL_PIXELFORMAT_RGBA8888,*/
-		/*SDL_TEXTUREACCESS_TARGET,*/
-		/*settings.wallpaper->width,*/
-		/*settings.wallpaper->height);*/
-
-	/*SDL_SetRenderTarget(*/
-		/*renderer,*/
-		/*settings.wallpaper->texture);*/
-
 	settings.wallpaper->renderer = renderer;
 
 	if((*settings.wallpaper->init)(settings.wallpaper)){
@@ -138,7 +133,6 @@ int start(void){
 
 	SDL_Event event;
 	while(1){
-
 		SDL_RenderClear(renderer);
 		(*settings.wallpaper->redraw)();
 		/*SDL_RenderCopy(*/
@@ -163,17 +157,16 @@ int loadWallpaper(const char *path, Wallpaper *wallpaper){
 	char * error;
 	if((error = dlerror()) != 0){
 		printf("error: %s\n", error);
-		return 1;
+		return 2;
 	}
 
 	wallpaper->redraw = (int (*)())dlsym(wallpaper_program, "redraw");
 	wallpaper->init = (int (*)(Wallpaper*))dlsym(wallpaper_program, "init");
 	wallpaper->destroy = (int (*)(void))dlsym(wallpaper_program, "destroy");
-	wallpaper->signal = (int (*)(int, char*))dlsym(wallpaper_program, "signal");
 
 	if((error = dlerror()) != 0){
 		printf("error: %s\n", error);
-		return 1;
+		return 2;
 	}
 
 	return 0;
@@ -187,7 +180,7 @@ void printUsage(const char *command){
 		"-x --width  width  width of output image\n"
 		"-y --height height height of output image\n"
 		"-w --window        output to a window\n"
-		"-r --root          output to X11 root window (desktop background)\n"
+		"-b --background    output to X11 root window (desktop background)\n"
 		"-f --file   path   output to a file\n"
 	);
 }
