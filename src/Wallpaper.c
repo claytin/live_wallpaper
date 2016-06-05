@@ -63,7 +63,7 @@ int main(int argc, char **argv){
 	}
 
 	if(path == NULL){
-		printf("you must include a wallpaper\n");
+		printf("you must include a wallpaper path\n");
 		printUsage(argv[0]);
 		return 1;
 	}
@@ -180,5 +180,14 @@ int loadWallpaper(const char *path, Wallpaper *wallpaper){
 }
 
 void printUsage(const char *command){
-	printf("usage: %s\n", command);
+	printf("usage: %s [options] -p wallpaper\n", command);
+	printf(
+		"-h --help          show this help message\n"
+		"-p --path   path   path to the wallaper (required)\n"
+		"-x --width  width  width of output image\n"
+		"-y --height height height of output image\n"
+		"-w --window        output to a window\n"
+		"-r --root          output to X11 root window (desktop background)\n"
+		"-f --file   path   output to a file\n"
+	);
 }
