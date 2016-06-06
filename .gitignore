@@ -27,3 +27,4 @@ Session.vim
 #image stuff
 *.png
 *.gif
+**/res/*.h
