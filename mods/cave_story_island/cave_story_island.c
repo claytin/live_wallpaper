@@ -1,8 +1,8 @@
+#include "cave_story_island.h"
 #include "Wallpaper.h"
 #include <stdio.h>
 #include <time.h>
 #include <SDL.h>
-#include <SDL_image.h>
 
 #define SCALE_FACTOR 2
 
@@ -24,28 +24,30 @@ int init(Wallpaper* _wallpaper){
 	/*_wallpaper->refresh = 16;*/
 	_wallpaper->refresh = 1000;
 
-	int imgFlags = IMG_INIT_PNG;
-	if(!(IMG_Init(imgFlags) & imgFlags)){
-		printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
-		return 1;
-	}
-
 	treeTexture = SDL_CreateTextureFromSurface(
-		this->renderer, IMG_Load("trees.png"));
+		this->renderer,
+		SDL_LoadBMP_RW(SDL_RWFromMem(res_trees_bmp, res_trees_bmp_len), 1));
 
 	mountainTexture = SDL_CreateTextureFromSurface(
-		this->renderer, IMG_Load("mountains.png"));
+		this->renderer,
+		SDL_LoadBMP_RW(SDL_RWFromMem(res_mountains_bmp, res_mountains_bmp_len), 1));
 
 	islandTexture = SDL_CreateTextureFromSurface(
-		this->renderer, IMG_Load("island.png"));
+		this->renderer,
+		SDL_LoadBMP_RW(SDL_RWFromMem(res_island_bmp, res_island_bmp_len), 1));
 
 	cloudTextures = malloc(sizeof(SDL_Surface) * 3);
 	cloudTextures[0] = SDL_CreateTextureFromSurface(
-		this->renderer, IMG_Load("cloud0.png"));
+		this->renderer,
+		SDL_LoadBMP_RW(SDL_RWFromMem(res_cloud0_bmp, res_cloud0_bmp_len), 1));
+
 	cloudTextures[1] = SDL_CreateTextureFromSurface(
-		this->renderer, IMG_Load("cloud1.png"));
+		this->renderer,
+		SDL_LoadBMP_RW(SDL_RWFromMem(res_cloud1_bmp, res_cloud1_bmp_len), 1));
+
 	cloudTextures[2] = SDL_CreateTextureFromSurface(
-		this->renderer, IMG_Load("cloud2.png"));
+		this->renderer,
+		SDL_LoadBMP_RW(SDL_RWFromMem(res_cloud2_bmp, res_cloud2_bmp_len), 1));
 
 	SDL_SetRenderDrawColor(this->renderer, 16, 65, 132, 0);
 
