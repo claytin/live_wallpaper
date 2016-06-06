@@ -66,11 +66,11 @@ int draws = 0;
 
 int redraw(void){
 	draws++;
-	/*SDL_FillRect(this->surface, NULL, 0x104184);*/
 	drawMountains();
 	drawTrees();
 	drawClouds();
 	drawIsland();
+
 	return 0;
 }
 
@@ -78,7 +78,6 @@ void drawClouds(void){
 	int width, height;
 	for(int i = 0; i < 8; i++){
 		int cloudOffset = time(NULL);
-		/*SDL_GetClipRect(cloudTextures[i % 3], &cloudRect);*/
 		SDL_QueryTexture(cloudTextures[i % 3], NULL, NULL, &width, &height);
 		width *= SCALE_FACTOR;
 		height *= SCALE_FACTOR;
@@ -87,9 +86,11 @@ void drawClouds(void){
 			(i * (this->width / 5) + cloudOffset)
 				% (this->width + width)
 				- width,
+
 			(i * (this->height / 50))
 				% (int)(this->height * .25)
 				+ (this->height - (this->height * .5)),
+
 			width, height
 		};
 
@@ -116,7 +117,6 @@ void drawIsland(void){
 }
 
 void drawMountains(void){
-
 	int width, height;
 	SDL_QueryTexture(mountainTexture, NULL, NULL, &width, &height);
 	width *= SCALE_FACTOR;
@@ -129,21 +129,17 @@ void drawMountains(void){
 		this->height - height,
 		width,
 		height};
-	int i = 0;
-	while(destRect.x < this->width){
-		i++;
-		SDL_Rect tempRect = destRect;
-		SDL_RenderCopy(this->renderer, mountainTexture, NULL, &tempRect);
+
+	while(destRect.x < (int)this->width){
+		SDL_RenderCopy(this->renderer, mountainTexture, NULL, &destRect);
 		destRect.x += width;
 	}
 }
 
 void drawTrees(void){
-
 	int width, height;
 	SDL_QueryTexture(mountainTexture, NULL, NULL, &width, &height);
 	width *= SCALE_FACTOR;
-	/*height *= SCALE_FACTOR;*/
 
 	int treeOffset = (time(NULL) / 5) % width;
 
@@ -152,9 +148,7 @@ void drawTrees(void){
 		this->height - height,
 		width,
 		height};
-	int i = 0;
-	while(destRect.x < this->width){
-		i++;
+	while(destRect.x < (int)this->width){
 		SDL_RenderCopy(this->renderer, treeTexture, NULL, &destRect);
 		destRect.x += width;
 	}
