@@ -7,6 +7,8 @@ IMAGES=$(wildcard res/*.bmp)
 IMAGES_AS_HEADER=$(IMAGES:.bmp=.h)
 
 all: $(TARGET)
+
+install: $(TARGET)
 	cp $^ $(MOD_DIR)
 
 $(TARGET): cave_story_island.o
