@@ -15,7 +15,7 @@ TARGET = walp
 CFLAGS = -g -Wall -Weverything -D_REENTRANT -I/usr/include/SDL2 --system-header-prefix=SDL
 LIBS = -ldl -lSDL2 -lpthread -lSDL2_gfx
 
-all: $(TARGET)
+all: $(TARGET) mods
 
 $(TARGET): Wallpaper.o
 	$(CC) $(LIBS) $(CFLAGS) -o $(TARGET) $^
