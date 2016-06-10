@@ -3,7 +3,7 @@
 #include <SDL.h>
 
 struct Wallpaper{
-	unsigned int width, height;	//wallpaper size
+	int width, height;	//wallpaper size
 	unsigned int refresh;	//time between redraws in milliseconds
 	SDL_Renderer *renderer;
 
