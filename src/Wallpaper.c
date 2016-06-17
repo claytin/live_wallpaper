@@ -6,18 +6,13 @@
 
 #include "Wallpaper.h"
 
+#include "X11_root_output.h"
+#include "Bmp_output.h"
+#include "Window_output.h"
+
 int loadWallpaper(const char *path, Wallpaper *wallpaper);
 void printUsage(const char *command);
-int start(void);
-
-static struct {
-	Wallpaper *wallpaper;
-	unsigned short output;
-	char *path;
-	char *output_file;
-	unsigned int width;
-	unsigned int height;
-} settings;
+int start(Wallpaper*);
 
 int main(int argc, char **argv){
 
@@ -28,39 +23,44 @@ int main(int argc, char **argv){
 		{"height",		required_argument,	0,	'y'},
 		{"window",		no_argument,		0,	'w'},
 		{"background",	no_argument,		0,	'b'},
-		{"file",		required_argument,	0,	'f'},
+		{"bmp",			required_argument,	0,	'm'},
 		{0, 0, 0, 0}	//thanks c/gnu
 	};
 
-	settings.path = NULL;
-	settings.output_file = NULL;
-	settings.output = NONE;
-	settings.wallpaper = NULL;
+	Wallpaper *wallpaper = (Wallpaper*)malloc(sizeof(Wallpaper));
+
+	wallpaper->path = NULL;
+	wallpaper->output.name = NONE;
+	wallpaper->width = -1;
+	wallpaper->height = -1;
+	wallpaper->refresh = -1;
+
+	char *output_file_path = NULL;
 
 	int nextOption;
-	while((nextOption = getopt_long(argc, argv, "whp:x:y:", longOptions, 0)) != -1){
+	while((nextOption = getopt_long(argc, argv, "hp:x:y:wbm:", longOptions, 0)) != -1){
 		switch(nextOption){
 			case 'h':
 				printUsage(argv[0]);
 				return 0;
 			case 'p':
-				settings.path = optarg;
+				wallpaper->path = optarg;
 				break;
 			case 'x':
-				settings.width = (unsigned int)atoi(optarg);
+				wallpaper->width = atoi(optarg);
 				break;
 			case 'y':
-				settings.height = (unsigned int)atoi(optarg);
+				wallpaper->height = atoi(optarg);
 				break;
 			case 'w':
-				settings.output = WINDOW;
+				wallpaper->output.name = WINDOW;
 				break;
 			case 'b':
-				settings.output = BACKGROUND;
+				wallpaper->output.name = BACKGROUND;
 				break;
-			case 'f':
-				settings.output = IMAGE;
-				settings.output_file = optarg;
+			case 'm':
+				wallpaper->output.name = BMP;
+				output_file_path = optarg;
 				break;
 			default:
 				printUsage(argv[0]);
@@ -68,77 +68,65 @@ int main(int argc, char **argv){
 		}
 	}
 
-	if(settings.path == NULL){
+	if(wallpaper->path == NULL){
 		printf("you must at least specify a wallpaper path\n");
 		printUsage(argv[0]);
 		return 1;
 	}
 
-	settings.wallpaper = (Wallpaper*)malloc(sizeof(Wallpaper));
+	wallpaper->width =
+		(wallpaper->width == -1) ?
+			DEFAULT_WIDTH : wallpaper->width;
 
-	settings.wallpaper->width = (settings.width) ?  settings.width : DEFAULT_WIDTH;
-	settings.wallpaper->height = (settings.height) ?  settings.height : DEFAULT_HEIGHT;
+	wallpaper->height =
+		(wallpaper->height == -1) ?
+			DEFAULT_HEIGHT : wallpaper->height;
 
-	settings.wallpaper->refresh = DEFAULT_REFRESH_RATE;
+	wallpaper->refresh =
+		(wallpaper->refresh == -1) ?
+		DEFAULT_REFRESH_RATE : wallpaper->refresh;
 
-	if(loadWallpaper(settings.path, settings.wallpaper)){
-		printf("unable to load wallpaper %s\n", settings.path);
+	if(loadWallpaper(wallpaper->path, wallpaper)){
+		printf("unable to load wallpaper %s\n", wallpaper->path);
 		return 1;
 	}
 
-	if(start()){
-		return 1;
+	switch(wallpaper->output.name){
+		case BACKGROUND:
+			x11_root_output_init(wallpaper);
+			break;
+		case BMP:
+			bmp_output_init(wallpaper, output_file_path);
+			break;
+		case WINDOW:
+			window_output_init(wallpaper);
+			break;
+		default:
+			printf("you must specify an output\n");
+			printUsage(argv[0]);
+			return 1;
 	}
 
-	return 0;
+	return start(wallpaper);
 }
 
-int start(void){
+int start(Wallpaper *_wallpaper){
 	if (SDL_Init(SDL_INIT_VIDEO) != 0){
 		printf("SDL_Init Error: %s\n", SDL_GetError());
 		return 1;
 	}
 
-	SDL_Window *window = SDL_CreateWindow(
-		"wallpaper test window",
-		100,
-		100,
-		(int)settings.wallpaper->width,
-		(int)settings.wallpaper->height,
-		SDL_WINDOW_SHOWN);
-
-	if (window == NULL){
-		printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
-		SDL_Quit();
-		return 1;
-	}
-
-	SDL_Renderer *renderer = SDL_CreateRenderer(
-		window,
-		-1,
-		SDL_RENDERER_ACCELERATED);
-
-	if (renderer == NULL){
-		SDL_DestroyWindow(window);
-		printf("SDL_CreateRenderer Error: %s\n", SDL_GetError());
-		SDL_Quit();
-		return 1;
-	}
-
-	settings.wallpaper->renderer = renderer;
-
-	if((*settings.wallpaper->init)(settings.wallpaper)){
+	if((*_wallpaper->init)(_wallpaper)){
 		return 1;
 	}
 
 	SDL_Event event;
 	while(1){
-		SDL_RenderClear(renderer);
-		(*settings.wallpaper->redraw)();
-		/*SDL_RenderCopy(*/
-			/*settings.wallpaper->renderer,*/
-			/*settings.wallpaper->texture, NULL, NULL);*/
-		SDL_RenderPresent(renderer);
+		SDL_RenderClear(_wallpaper->renderer);
+		(*_wallpaper->redraw)();
+		SDL_RenderPresent(_wallpaper->renderer);
+
+		(_wallpaper->output.update)();
 
 		while(SDL_PollEvent(&event) != 0){
 			if(event.type == SDL_QUIT){
@@ -147,12 +135,12 @@ int start(void){
 			}
 		}
 
-		SDL_Delay(settings.wallpaper->refresh);
+		SDL_Delay((Uint32)_wallpaper->refresh);
 	}
 }
 
-int loadWallpaper(const char *path, Wallpaper *wallpaper){
-	void * wallpaper_program = dlopen(path, RTLD_NOW);
+int loadWallpaper(const char *_path, Wallpaper *_wallpaper){
+	_wallpaper->program = dlopen(_path, RTLD_NOW);
 
 	char * error;
 	if((error = dlerror()) != 0){
@@ -160,9 +148,9 @@ int loadWallpaper(const char *path, Wallpaper *wallpaper){
 		return 2;
 	}
 
-	wallpaper->redraw = (int (*)())dlsym(wallpaper_program, "redraw");
-	wallpaper->init = (int (*)(Wallpaper*))dlsym(wallpaper_program, "init");
-	wallpaper->destroy = (int (*)(void))dlsym(wallpaper_program, "destroy");
+	_wallpaper->redraw = (int (*)())dlsym(_wallpaper->program, "redraw");
+	_wallpaper->init = (int (*)(Wallpaper*))dlsym(_wallpaper->program, "init");
+	_wallpaper->destroy = (int (*)(void))dlsym(_wallpaper->program, "destroy");
 
 	if((error = dlerror()) != 0){
 		printf("error: %s\n", error);
@@ -172,15 +160,15 @@ int loadWallpaper(const char *path, Wallpaper *wallpaper){
 	return 0;
 }
 
-void printUsage(const char *command){
-	printf("usage: %s [options] -p wallpaper\n", command);
+void printUsage(const char *_command){
+	printf("usage: %s [options] -p wallpaper\n", _command);
 	printf(
-		"-h --help          show this help message\n"
-		"-p --path   path   path to the wallaper (required)\n"
-		"-x --width  width  width of output image\n"
-		"-y --height height height of output image\n"
-		"-w --window        output to a window\n"
-		"-b --background    output to X11 root window (desktop background)\n"
-		"-f --file   path   output to a file\n"
+		"-h --help            show this help message\n"
+		"-p --path   <path>   path to the wallaper (required)\n"
+		"-x --width  <width>  width of output image\n"
+		"-y --height <height> height of output image\n"
+		"-w --window          output to a window\n"
+		"-b --background      output to X11 root window (desktop background)\n"
+		"-m --bmp    <path>   output to a bitmap file\n"
 	);
 }

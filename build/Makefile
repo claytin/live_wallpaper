@@ -12,12 +12,12 @@ MODS=$(notdir $(addsuffix .so,$(wildcard $(AVAILABLE_MOD_DIR)/*)))
 
 #comp flags
 TARGET = walp
-CFLAGS = -g -Wall -Weverything -D_REENTRANT -I/usr/include/SDL2 --system-header-prefix=SDL
-LIBS = -ldl -lSDL2 -lpthread -lSDL2_gfx
+CFLAGS = -g -Wall -Weverything `pkg-config sdl2 SDL2_gfx --cflags` --system-header-prefix=SDL
+LIBS = -ldl -lpthread `pkg-config sdl2 SDL2_gfx --libs`
 
 all: $(TARGET) mods
 
-$(TARGET): Wallpaper.o
+$(TARGET): Wallpaper.o X11_root_output.o Bmp_output.o Window_output.o
 	$(CC) $(LIBS) $(CFLAGS) -o $(TARGET) $^
 
 %.o: $(SRC_DIR)/%.c

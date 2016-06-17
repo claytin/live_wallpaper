@@ -1,23 +1,33 @@
 #ifndef WALLPAPER_H
 #define WALLPAPER_H
+
 #include <SDL.h>
 
+enum output_names{
+	NONE = 0,
+	WINDOW,
+	BACKGROUND,
+	BMP
+};
+
+struct Output{
+	unsigned short name;
+	int (*update)(void);
+	int (*destroy)(void);
+};
+
 struct Wallpaper{
+	char *path;	//path to the shared object file
 	int width, height;	//wallpaper size
-	unsigned int refresh;	//time between redraws in milliseconds
+	int refresh;	//time between redraws in milliseconds
 	SDL_Renderer *renderer;
 
 	void *program;
 	int (*redraw)();
 	int (*init)(struct Wallpaper*);
 	int (*destroy)(void);
-};
 
-enum outputs{
-	NONE = 0,
-	WINDOW,
-	BACKGROUND,
-	IMAGE
+	struct Output output;
 };
 
 typedef struct Wallpaper Wallpaper;
