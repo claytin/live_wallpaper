@@ -6,16 +6,18 @@ TARGET=cave_story_island.so
 IMAGES=$(wildcard res/*.bmp)
 IMAGES_AS_HEADER=$(IMAGES:.bmp=.h)
 
+CFLAGS = -g -Wall -Weverything `pkg-config sdl2 SDL2_gfx --cflags` --system-header-prefix=SDL
+
 all: $(TARGET)
 
 install: $(TARGET)
 	cp $^ $(MOD_DIR)
 
 $(TARGET): cave_story_island.o
-	$(CC) -shared -o $@ $^ -I/usr/include/SDL2 -lSDL2_gfx
+	$(CC) -shared -o $@ $^ -lSDL2_gfx
 
 cave_story_island.o: cave_story_island.c cave_story_island.h
-	$(CC) -c -fpic $< $(CFLAG) -I/usr/include/SDL2 --system-header-prefix=SDL -lSDL2_gfx -lSDL2_image
+	$(CC) -c -fpic $< $(CFLAG) $(CFLAGS)
 
 cave_story_island.h: $(IMAGES_AS_HEADER)
 

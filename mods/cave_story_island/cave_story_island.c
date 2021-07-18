@@ -35,9 +35,6 @@ int init(Wallpaper* _wallpaper);
 int init(Wallpaper* _wallpaper){
 	wallpaper = _wallpaper;
 
-	int extra_clouds = wallpaper->width / 100;
-	num_sprites += extra_clouds;
-
 	sprites = malloc(sizeof(Sprite) * (unsigned long)num_sprites);
 
 	sprites[0].texture = SDL_CreateTextureFromSurface(
@@ -72,11 +69,6 @@ int init(Wallpaper* _wallpaper){
 		wallpaper->renderer,
 		SDL_LoadBMP_RW(SDL_RWFromMem(res_trees_bmp, (int)res_trees_bmp_len), 1));
 	sprites[5].render = drawTrees;
-
-	for(int i = 6; i < num_sprites; i++){
-		sprites[i].texture = sprites[i % 3].texture;
-		sprites[i].render = drawClouds;
-	}
 
 	for(int i = 0; i < num_sprites; i++){
 		SDL_QueryTexture(
@@ -121,7 +113,7 @@ int drawClouds(Sprite *sprite, time_t time){
 	int wrapX = (wallpaper->width + sprite->destRect.w);
 
 	sprite->destRect.x =
-		(((sprite->nth * 999) + pan)
+		(((sprite->nth * (wallpaper->width / 3)) + pan)
 		% wrapX)
 		- sprite->destRect.w;
 

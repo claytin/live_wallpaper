@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <SDL.h>
 
 #include "Wallpaper.h"
@@ -14,6 +15,8 @@ int loadWallpaper(const char *path, Wallpaper *wallpaper);
 void printUsage(const char *command);
 int start(Wallpaper*);
 
+static bool once = false;
+
 int main(int argc, char **argv){
 
 	const struct option longOptions[] = {
@@ -24,7 +27,8 @@ int main(int argc, char **argv){
 		{"window",		no_argument,		0,	'w'},
 		{"background",	no_argument,		0,	'b'},
 		{"bmp",			required_argument,	0,	'm'},
-		{0, 0, 0, 0}	//thanks c/gnu
+		{"once",		no_argument,		0,	'n'},
+		{0, 0, 0, 0}
 	};
 
 	Wallpaper *wallpaper = (Wallpaper*)malloc(sizeof(Wallpaper));
@@ -40,6 +44,9 @@ int main(int argc, char **argv){
 	int nextOption;
 	while((nextOption = getopt_long(argc, argv, "hp:x:y:wbm:", longOptions, 0)) != -1){
 		switch(nextOption){
+			case 'n':
+				once = true;
+				break;
 			case 'h':
 				printUsage(argv[0]);
 				return 0;
@@ -111,10 +118,6 @@ int main(int argc, char **argv){
 }
 
 int start(Wallpaper *_wallpaper){
-	if (SDL_Init(SDL_INIT_VIDEO) != 0){
-		printf("SDL_Init Error: %s\n", SDL_GetError());
-		return 1;
-	}
 
 	if((*_wallpaper->init)(_wallpaper)){
 		return 1;
@@ -127,6 +130,11 @@ int start(Wallpaper *_wallpaper){
 		SDL_RenderPresent(_wallpaper->renderer);
 
 		(_wallpaper->output.update)();
+
+		if (once) { 
+			SDL_Quit();
+			return 0;
+		}
 
 		while(SDL_PollEvent(&event) != 0){
 			if(event.type == SDL_QUIT){
